@@ -3,18 +3,11 @@
 #kütüphaneler
 import discord
 import os
-import asyncio
-import requests
-from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-import time
-import threading
-import functools
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from discord.ext import commands
+from discord import app_commands # Gerekli değil ama modern yaklaşım için kalsın
+from discord.ui import View, Button, Modal, TextInput, Select # İhtiyacımız olan arayüz elemanları
+
 
 # .env dosyasındaki bilgileri yükleme
 load_dotenv()
@@ -22,197 +15,273 @@ load_dotenv()
 # .env dosyasından bilgileri çekme
 TOKEN = os.getenv('DISCORD_TOKEN')
 KAYIT_KANALI_ID = int(os.getenv('KAYIT_KANALI_ID'))
-KAYITSIZ_ROLU_ID = int(os.getenv('KAYITSIZ_ROLU_ID'))
 TOPLULUK_ROLU_ID = int(os.getenv('TOPLULUK_ROLU_ID'))
 KULUP_ROLU_ID = int(os.getenv('KULUP_ROLU_ID'))
-WEBSITE_USERNAME = os.getenv('WEBSITE_USERNAME')
-WEBSITE_PASSWORD = os.getenv('WEBSITE_PASSWORD')
+ROLALMA_KANALI_ID=int(os.getenv('ROLALMA_KANALI_ID'))
 
-# Bot için gerekli izinleri tanımlama
+# ROLLER
+
+ROLE_OPTIONS = {
+    # "ROL_ID": {"label": "rol adı", "emoji": "💻", "description": "rol açıklaması (isteğe bağlı)"},
+    
+    1430319278334410824: {
+        "label": "Game Developer",
+        "emoji": "💻",
+        "description": "Oyun geliştirme ile ilgileniyorum."
+    },
+    1430324401110257784: {
+        "label": "Visual Artist",
+        "emoji": "🎨",
+        "description": "2D/3D Görsel sanatlar ile ilgileniyorum."
+    },
+    1430324364884316232: {
+        "label": "Game Designer",
+        "emoji": "✏️", # Veya 📝
+        "description": "Oyun tasarımı ile ilgileniyorum."
+    },
+    # 123456789000000004: {
+    #     "label": "Level Designer",
+    #     "emoji": "🟩", # Veya 🗺️
+    #     "description": "Bölüm tasarımı ile ilgileniyorum."
+    # },
+    # 123456789000000005: {
+    #     "label": "Sound Artist",
+    #     "emoji": "🎤", # Veya 🎧
+    #     "description": "Ses ve müzik ile ilgileniyorum."
+    # },
+    # 123456789000000006: {
+    #     "label": "Game Tester",
+    #     "emoji": "🎮", # Veya 🕹️
+    #     "description": "Oyun testi ve QA ile ilgileniyorum."
+    # },
+    # 123456789000000007: {
+    #     "label": "Notify Me",
+    #     "emoji": "🔔",
+    #     "description": "Duyurulardan haberdar olmak istiyorum."
+    # },
+}
+
+#INTENTS
+
 intents = discord.Intents.default()
-intents.members = True
+intents.members = True 
 intents.message_content = True
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-client = discord.Client(intents=intents)
 
-# --- WEBSCRAPPING FONKSİYONU ---
-def ogrenci_numarasi_dogrula(ogrenci_no):
-    LOGIN_PAGE_URL = 'https://sks.nisantasi.edu.tr/kulup-baskani/login'
-    MEMBER_LIST_URL = 'https://sks.nisantasi.edu.tr/kulup-baskani/uyeler'
+#KAYIT FORMU
+class RegistrationModal(Modal, title="TonishBot Kayıt Paneli"):
+
     
-    service = Service(executable_path='chromedriver.exe')
-    options = webdriver.ChromeOptions()
-    
-    # --- GÖRSEL MOD İÇİN BU SATIRI YORUMDA BIRAK ---
-    options.add_argument('--headless') 
-    # herhangi bir çakışma ve izin sorunu olmasın diye abartı ayarlar
-    options.add_argument("--start-maximized")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-infobars")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-browser-side-navigation")
-    options.add_argument("--disable-gpu")
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36")    
-    options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    #ad
+    form_isim = TextInput(
+        label="İsminiz",
+        placeholder="İsim",
+        style=discord.TextStyle.short,
+        required=True,
+        max_length=20
+    )
 
+    #soyad
+    form_soyisim = TextInput(
+        label="Soyisminiz",
+        placeholder="Soyisim",
+        style=discord.TextStyle.short,
+        required=True,
+        max_length=20
+    )
 
-    print("Web scraping başlıyor")
-    driver = None
-    try:
-        print("\nadım 1: tarayıcı başlatılıyor")
-        driver = webdriver.Chrome(service=service, options=options)
-        
-        wait = WebDriverWait(driver, 20)
+    #nickname
+    form_nickname = TextInput(
+        label="Kullanmak istediğiniz Nickname",
+        placeholder="Tonish",
+        style=discord.TextStyle.short,
+        required=True,
+        max_length=20
+    )
 
-        print("\nadım 2: giriş sayfası")
-        driver.get(LOGIN_PAGE_URL)
-    
-        print("\nadım 3: bilgileri dolduruluyor...")
-        username_box = wait.until(EC.visibility_of_element_located((By.ID, 'kullaniciAdi')))
-        username_box.click()
-        username_box.send_keys(WEBSITE_USERNAME)        
-        password_box = driver.find_element(By.ID, 'sifre')
-        password_box.click()
-        password_box.send_keys(WEBSITE_PASSWORD)
+    #NICK DEĞİŞTİRME
+    async def on_submit(self, interaction: discord.Interaction):
 
-        print("\nadım 4: giriş butonuna tıklama")
-        login_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button[type='submit']")))
-        login_button.click()
-       
-        print("Kulüp Üyeleri butonunun yüklenmesi bekleniyor...")
-        kulup_uyeleri_button = wait.until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[5]/main/div/div[1]/a/button")))
+        isim = self.form_isim.value
+        soyisim = self.form_soyisim.value
+        nickname = self.form_nickname.value
 
-        print("Kulüp Üyeleri butonuna tıklanıyor...")
-        kulup_uyeleri_button.click()
+        new_nick = f"{isim} '{nickname}' {soyisim}"
 
-        # webscraping
-        wait.until(EC.visibility_of_element_located((By.TAG_NAME, 'tbody')))
-        page_source = driver.page_source
-        soup = BeautifulSoup(page_source, 'html.parser')
-        
-        bulunan_numaralar = []
-        table_body = soup.find('tbody')
-        if not table_body: return False
-        rows = table_body.find_all('tr')
-        for row in rows:
-            cells = row.find_all('td')
-            if len(cells) > 3:
-                ogrenci_no_hucre = cells[3].text.strip()
-                if ogrenci_no_hucre.isdigit():
-                    bulunan_numaralar.append(ogrenci_no_hucre)
-        
-        if ogrenci_no in bulunan_numaralar:
-            print("BAŞARILI: Öğrenci bulundu!")
-            return True
-        else:
-            print("BAŞARISIZ: Öğrenci bulunamadı.")
-            return False
-    except Exception as e:
-        print(f"\n!!! HATA !!! Selenium ile web scraping sırasında bir hata oluştu: {e}")
-        return False
-    finally:
-        if driver:
-            print("\nİşlem bitti. Tarayıcı 5 saniye içinde kapatılacak.")
-            time.sleep(5)
-            driver.quit()
+        try:
+            await interaction.user.edit(nick=new_nick)
+            
+            await interaction.response.send_message(
+                f"Harika! Kaydın tamamlandı ve nickname'in başarıyla ayarlandı:\n**{new_nick}**",
+                ephemeral=True 
+            )
+        except discord.Forbidden:
+            await interaction.response.send_message(
+                "Nickname'ini değiştiremiyorum.",
+                ephemeral=True
+            )
+        except Exception as e:
+            await interaction.response.send_message(f"Beklenmedik bir hata oluştu: {e}", ephemeral=True)
+            print(f"Hata: {e}")
 
-# --- BUTON SINIFI (EN BÜYÜK DEĞİŞİKLİK BURADA) ---
-class KayitView(discord.ui.View):
+# KAYIT BUTONU GÖRÜNÜMÜ
+
+class RegistrationView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    async def run_blocking(self, blocking_func, *args):
-        """ Asistan şefe işi devreden ve sonucunu bekleyen yönetici fonksiyon """
-        # functools.partial, partiala şu fonksiyonu, bu argümanlarla çalıştır
-        func = functools.partial(blocking_func, *args)
-        # client.loop.run_in_executor parçaladı ve iki blok şeklinde çalıştırdı ki heartbeat atmaya devam etsin
-        return await client.loop.run_in_executor(None, func)
+    @discord.ui.button(
+        label="Kayıt Olmak İçin Tıkla",
+        style=discord.ButtonStyle.green,
+        custom_id="kalici_kayit_butonu" 
+    )
+    async def register_button_callback(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_modal(RegistrationModal())
 
-    @discord.ui.button(label="Evet, NU öğrencisiyim", style=discord.ButtonStyle.success, custom_id="ogrenci_evet")
-    async def evet_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        member = interaction.user
-        await interaction.response.send_message(f"Harika, {member.mention}! Lütfen 11 haneli okul numaranı bu kanala yaz.", ephemeral=True)
-        try:
-            def check(m): return m.author == interaction.user and m.channel == interaction.channel
-            message = await client.wait_for('message', timeout=60.0, check=check)
-            ogrenci_no = message.content.strip()
+# AÇILAN MENU
+class RoleSelect(Select):
 
-            if not ogrenci_no.isdigit() or len(ogrenci_no) != 11:
-                await interaction.followup.send("Girdiğin numara 11 haneli ve sadece rakamlardan oluşmalı.", ephemeral=True)
-                return
+    def __init__(self):
+        options = []
+        for role_id, data in ROLE_OPTIONS.items():
+            options.append(
+                discord.SelectOption(
+                    label=data["label"],
+                    value=str(role_id), 
+                    emoji=data.get("emoji"), 
+                    description=data.get("description") 
+                )
+            )
 
-            await interaction.followup.send("Numaranı kontrol ediyorum, bu işlem 20 saniye kadar sürebilir...", ephemeral=True)
-            
-            dogrulandi = await self.run_blocking(ogrenci_numarasi_dogrula, ogrenci_no)
-            
-            kayitsiz_rolu = interaction.guild.get_role(KAYITSIZ_ROLU_ID)
-            if dogrulandi:
-                kulup_uyesi_rolu = interaction.guild.get_role(KULUP_ROLU_ID)
-                await member.add_roles(kulup_uyesi_rolu)
-                await member.remove_roles(kayitsiz_rolu)
-                await interaction.followup.send(f"Doğrulama başarılı! Aramıza hoş geldin. `Kulüp Üyesi` rolü verildi.", ephemeral=True)
-            else:
-                kayitlink = 'https://sks.nisantasi.edu.tr/uye-talep'
-                await interaction.followup.send(f"Maalesef girdiğin öğrenci numarası sistemde bulunamadı. Eğer kulübümüze katılmak istersen aşağıdaki bağlantıya tıklayarak kayıt işlemini yapabilirsin! Daha sonra '!kayitol' komutunu bu kanala yazarak tekrar kayıt işlemi yapabilirsin.\n{kayitlink} ", ephemeral=True)
-        except asyncio.TimeoutError:
-            await interaction.followup.send("Zamanında cevap vermediğin için kayıt iptal edildi.", ephemeral=True)
+        #SEÇMECE
+        super().__init__(
+            custom_id="kalici_rol_secme_menusu", 
+            placeholder="Almak istediğiniz rolleri seçin...",
+            min_values=0, 
+            max_values=len(options), 
+            options=options
+        )
 
-    @discord.ui.button(label="Hayır, Değilim", style=discord.ButtonStyle.danger, custom_id="ogrenci_hayir")
-    async def hayir_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-
-        member = interaction.user
-        topluluk_rolu = interaction.guild.get_role(TOPLULUK_ROLU_ID)
-        kayitsiz_rolu = interaction.guild.get_role(KAYITSIZ_ROLU_ID)
-        await member.add_roles(topluluk_rolu)
-        await member.remove_roles(kayitsiz_rolu)
-        await interaction.response.send_message(f"Kaydın tamamlandı {member.mention}! `Topluluk Üyesi` rolü verildi.", ephemeral=True)
-
-# --- Bot Eventleri  --- 
-@client.event
-async def on_ready():
-    client.add_view(KayitView())
-    print(f'{client.user} olarak giriş yaptık ve kayıt sistemimiz hazır!')
-    print('--------------------------------------------------')
-
-@client.event
-async def on_member_join(member):
-    print(f'{member.name} sunucuya katıldı.')
-    kayit_kanali = member.guild.get_channel(KAYIT_KANALI_ID)
-    kayitsiz_rolu = member.guild.get_role(KAYITSIZ_ROLU_ID)
-    if not kayit_kanali or not kayitsiz_rolu:
-        print("HATA: Kayıt kanalı veya kayıtsız rolü bulunamadı! ID'leri kontrol et.")
-        return
-    await member.add_roles(kayitsiz_rolu)
-    hgmesaj = (f"Hoş geldin {member.mention}! Sunucumuza tam erişim sağlamak için lütfen kayıt ol.\n\n"
-             f"**İstanbul Nişantaşı Üniversitesi öğrencisi misin?**")
-    await kayit_kanali.send(hgmesaj, view=KayitView())
-
-# !kayitol eventi
-@client.event
-async def on_message(message):
-    # Botun kendi kendine cevap vermesini engelle
-    if message.author == client.user:
-        return
-
-    # Sadece #kayıt kanalında çalışsın
-    if message.channel.id != KAYIT_KANALI_ID:
-        return
-
-    # Komut '!kayitol' ise...
-    if message.content.lower() == '!kayitol':
-        # Kullanıcının eski komutunu 1 saniye sonra sil (kanalı temiz tutmak için)
-        await asyncio.sleep(1)
-        await message.delete()
-
-        # Kayıt mesajını ve butonlarını yeniden gönder
-        member = message.author
-        hgmesaj = (f"Tekrar hoş geldin {member.mention}! Kayıt işlemini yeniden başlatalım.\n\n"
-                   f"**İstanbul Nişantaşı Üniversitesi öğrencisi misin?**")
+    async def callback(self, interaction: discord.Interaction):
+        # DÜŞÜNME EFEKTİ
+        await interaction.response.defer(ephemeral=True)
         
-        # Bu mesajın da sadece komutu yazan kişi tarafından görülmesi daha iyi olabilir.
-        # Ama şimdilik kanala atalım, isteğe göre bunu da 'ephemeral' yapabiliriz.
-        await message.channel.send(hgmesaj, view=KayitView(), delete_after=300) # 5 dakika sonra kendini silsin
+        member = interaction.user 
+        
+        selected_role_ids = set(int(value) for value in self.values)
+        all_menu_role_ids = set(ROLE_OPTIONS.keys())
+        
+        roles_to_add = []
+        roles_to_remove = []
+        
+        #ROL KONTROL
 
-# --- BOTU ÇALIŞTIR --- 
-client.run(TOKEN)
+        for role_id in all_menu_role_ids:
+            role = interaction.guild.get_role(role_id)
+            if role is None:
+                print(f"HATA: {role_id} ID'li rol sunucuda bulunamadı. Ayarları kontrol et.")
+                continue
+            
+            # ROL EKLE
+            if role_id in selected_role_ids and role not in member.roles:
+                roles_to_add.append(role)
+            # ROL ÇIKAR
+            elif role_id not in selected_role_ids and role in member.roles:
+                roles_to_remove.append(role)
+
+        try:
+            if roles_to_add:
+                await member.add_roles(*roles_to_add, reason="Rol menüsünden seçildi")
+            if roles_to_remove:
+                await member.remove_roles(*roles_to_remove, reason="Rol menüsünden kaldırıldı")
+
+            await interaction.followup.send("Rollerin başarıyla güncellendi!", ephemeral=True)
+            
+        except discord.Forbidden:
+            print(f"HATA: {member.name} için roller güncellenemedi")
+            await interaction.followup.send("Rollerini güncelleyemedim.", ephemeral=True)
+        except Exception as e:
+            print(f"ROL MENÜSÜ HATASI: {e}")
+            await interaction.followup.send(f"Bilinmeyen bir hata oluştu: {e}", ephemeral=True)
+
+
+#MENÜ SİLİNMESİN DİYE
+
+class RoleSelectView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(RoleSelect())
+
+# BOT ÇALIŞTI
+
+@bot.event
+async def on_ready():
+    print(f'Bot {bot.user} olarak giriş yaptı!')
+    print(f'Token: {TOKEN[:5]}...') 
+    print(f'Karşılama Kanalı ID: {KAYIT_KANALI_ID}')
+    bot.add_view(RegistrationView())
+
+# YENİ ÜYE
+
+@bot.event
+async def on_member_join(member: discord.Member):
+    channel = bot.get_channel(KAYIT_KANALI_ID)
+
+    try:
+        guild = member.guild
+        
+        topluluk_rol = guild.get_role(TOPLULUK_ROLU_ID)
+        
+        if topluluk_rol is not None:
+            await member.add_roles(topluluk_rol)
+            print(f"Başarılı: {member.name} kullanıcısına '{topluluk_rol.name}' rolü verildi.")
+        else:
+            print(f"HATA: {TOPLULUK_ROLU_ID} ID'li Topluluk Üyesi rolü bulunamadı. Lütfen kontrol et.")
+            
+    except discord.Forbidden:
+        print(f"HATA: {member.name} kullanıcısına rol verilemedi.")
+    except Exception as e:
+        print(f"ROL VERME HATASI: {e}")
+
+    if channel is not None:
+
+        message_content = f"Aramıza hoş geldin, {member.mention}! \n\nSunucumuzu tam olarak kullanabilmek için lütfen aşağıdaki butona basarak kayıt ol."
+        await channel.send(message_content, view=RegistrationView())
+    else:
+        print(f"HATA: {KAYIT_KANALI_ID} ID'li kanal bulunamadı. Lütfen kontrol et.")
+
+
+# TEST KOMUTU
+
+@bot.command()
+async def kayittest(ctx):
+    print(f"{ctx.author} tarafından !kayittest komutu kullanıldı.")
+    
+    message_content = (
+        f"Merhaba, {ctx.author.mention}! Bu bir kayıt sistemi testidir. \n\n"
+        f"Sistemi denemek için lütfen aşağıdaki butona basarak kayıt olmayı dene."
+    )
+    await ctx.send(message_content, view=RegistrationView())
+
+# ROL MENUSU KOMUTU
+
+@bot.command()
+@commands.has_permissions(administrator=True) 
+async def rolmenusu(ctx):
+
+    embed = discord.Embed(
+        title="Almak istediğiniz rolleri seçin",
+        description="Aşağıdaki menüye tıklayarak ilgilendiğiniz alanları seçebilir ve ilgili rollerinizi alabilirsiniz. Seçimlerinizi istediğiniz zaman değiştirebilirsiniz.🎮✅",
+        color=discord.Color.magenta()
+    )
+    embed.set_thumbnail(url=ctx.guild.icon.url)
+
+    await ctx.send(embed=embed, view=RoleSelectView())
+    print(f"{ctx.author} tarafından '{ctx.channel.name}' kanalına rol menüsü gönderildi.")
+
+    await ctx.message.delete()
+
+# ÇALIŞTIR
+
+bot.run(TOKEN)
