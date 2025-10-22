@@ -28,52 +28,52 @@ TICKET_KANALI_ID = int(os.getenv('TICKET_KANALI_ID'))
 ROLE_OPTIONS = {
     # "ROL_ID": {"label": "rol adı", "emoji": "💻", "description": "rol açıklaması (isteğe bağlı)"},
     
-    1430319278334410824: {
+    1430626208521126041: {
         "label": "Developer",
         "emoji": "💻",
         "description": "Oyun geliştirme ile ilgileniyorum."
     },
-    1430324401110257784: {
+    1430627371353903115: {
         "label": "Artist (2D/3D)",
         "emoji": "🎨",
         "description": "2D/3D Görsel sanatlar ile ilgileniyorum."
     },
-    1430324364884316232: {
+    1430627405600391208: {
         "label": "Level Designer",
         "emoji": "👾", # Veya 🎮
         "description": "Oyun tasarımı ile ilgileniyorum."
     },
-        1430324364884316232: {
+    1430627431152091327: {
         "label": "Storyteller",
         "emoji": "✏️", # Veya 📝
         "description": "Hikaye anlatımı ile ilgileniyorum."
     },
-        1430324364884316232: {
+    1430627474206625924: {
         "label": "UI/UX Designer",
         "emoji": "🚥", # Veya 🚦
         "description": "UI/UX tasarımı ile ilgileniyorum."
     },
-    123456789000000005: {
+    1430627494805110784: {
         "label": "Sound Artist",
         "emoji": "🎤", # Veya 🎧
         "description": "Ses ve müzik ile ilgileniyorum."
     },
-        1430324364884316232: {
+    1430627516778942484: {
         "label": "Playtester",
         "emoji": "🕹️", # Veya ❔
-        "description": "Oyun testi ve QA ile ilgileniyorum. Oyunlarınızı test etmemi isterseniz @Playtester rolünü seçebilirsiniz."
+        "description": "Oyun testi ve QA ile ilgileniyorum. Oyununuzun testi için @Playtester rolünü çağırabilirsiniz."
     },
-    123456789000000006: {
+    1430627543849111763: {
         "label": "Gamer",
         "emoji": "🎮", # Veya 🕹️
         "description": "Oyuncuyum ve oyun oynamayı seviyorum."
     },
-        123456789000000006: {
+    1430627564829020340: {
         "label": "Mentor",
         "emoji": "👑", # Veya 🌟
         "description": "İşaretlediğim konumda bilgiliyim ve diğer geliştiricilere rehberlik ediyorum."
     },
-        1430324364884316232: {
+    1430627593274785862: {
         "label": "Duyuru AL",
         "emoji": "🔔", # Veya 🛎️
         "description": "Sadece @everyone duyurularını almak istemiyorum. Tüm etkinlikleri takip etmek istiyorum."
@@ -153,8 +153,8 @@ class RegistrationView(View):
     @discord.ui.button(
         label="Kayıt Olmak İçin Tıkla",
         style=discord.ButtonStyle.green,
-        emoji='👋'
-        custom_id="kalici_kayit_butonu" 
+        custom_id="kalici_kayit_butonu",
+        emoji="👋" 
     )
     async def register_button_callback(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(RegistrationModal())
@@ -447,6 +447,72 @@ async def rolmenusu(ctx):
 
     await ctx.message.delete()
 
+#Rolleri anlatan mesaj
+
+@bot.command()
+@commands.has_permissions(administrator=True) # Sadece Yöneticiler kullanabilsin
+async def rolbilgi(ctx):
+    """
+    Rol bilgilendirme embed'ini bu komutun kullanıldığı kanala gönderir.
+    """
+    # Neden yapıyoruz? ROLE_OPTIONS'daki tüm rolleri ve açıklamalarını
+    # listeleyen şık bir embed mesajı oluşturmak için.
+    print(f"{ctx.author} tarafından !rolbilgi komutu kullanıldı.")
+    
+    try:
+        # 1. Ana Embed Mesajını Oluştur
+        embed = discord.Embed(
+            title="📜 Sunucu Rolleri ve Açıklamaları",
+            description="Aşağıdaki listeden rollerimizin ne anlama geldiğini öğrenebilirsiniz.\nRollerinizi almak veya değiştirmek için bu mesajın altındaki açılır menüyü kullanın.",
+            color=0xFEE75C # Hoş bir sarı tonu (veya istediğin renk)
+        )
+        
+        if ctx.guild.icon:
+            embed.set_author(name=f"{ctx.guild.name} Rol Rehberi", icon_url=ctx.guild.icon.url)
+
+        # 2. ROLE_OPTIONS Ayarlarını Döngüye Al ve Alan (Field) Olarak Ekle
+        # Neden yapıyoruz? Ayar dosyasındaki tüm rolleri otomatik olarak
+        # embed'e ekliyoruz. Yeni rol eklediğinde burayı değiştirmen gerekmez.
+        if not ROLE_OPTIONS:
+            await ctx.send("Hata: `ROLE_OPTIONS` ayarları boş görünüyor. Lütfen kod dosyasını kontrol et.")
+            return
+
+        for role_id, data in ROLE_OPTIONS.items():
+            # data'dan bilgileri al, eğer emoji/açıklama yoksa varsayılan metin kullan
+            emoji = data.get("emoji", "🔹") # Emoji yoksa mavi kare
+            label = data.get("label", "İsimsiz Rol")
+            description = data.get("description", "Açıklama belirtilmemiş.")
+            
+            # Embed'e yeni bir alan ekle
+            embed.add_field(
+                name=f"{emoji} {label}", # Başlık: 💻 Game Developer
+                value=description,       # İçerik: Oyun geliştirme ile...
+                inline=False # Her rolün tüm satırı kaplamasını sağlar (daha okunaklı)
+                             # 'inline=True' yaparsan yan yana sıralar
+            )
+
+        # 3. Embed'i kanala gönder
+        await ctx.send(embed=embed)
+        
+        # Komut mesajını temizle
+        await ctx.message.delete()
+        print(f"Rol bilgilendirme mesajı '{ctx.channel.name}' kanalına başarıyla gönderildi.")
+
+    except discord.Forbidden:
+        print(f"HATA: {ctx.channel.name} kanalına rol bilgi mesajı gönderilemedi. İZİN EKSİK.")
+        await ctx.author.send(f"Hata: `{ctx.channel.name}` kanalına mesaj gönderemedim. 'Mesaj Gönder' ve 'Gömüleri Bağla' izinlerimi kontrol et.")
+    except Exception as e:
+        print(f"ROLBİLGİ KOMUTU HATASI: {e}")
+        await ctx.author.send(f"`!rolbilgi` komutunda beklenmedik bir hata oluştu: `{e}`")
+
+@rolbilgi.error
+async def rolbilgi_error(ctx, error):
+    # Neden yapıyoruz? Komutu yetkisi olmayan biri kullanırsa uyarıyoruz.
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("Üzgünüm, bu komutu sadece sunucu yöneticileri kullanabilir.", delete_after=10)
+        await ctx.message.delete(delay=10)
+# --- YENİ BÖLÜM SONU ---
+
 #Ticket mesajını kurma
 
 @bot.command()
@@ -496,6 +562,107 @@ async def ticketkur_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("Üzgünüm, bu komutu sadece sunucu yöneticileri kullanabilir.", delete_after=10)
         await ctx.message.delete(delay=10)
+
+
+#Linkleri paylaşan komut
+
+@bot.command()
+async def link(ctx):
+
+    print(f"{ctx.author} tarafından !link komutu kullanıldı.")
+    
+    uyeolma_link = "https://sks.nisantasi.edu.tr/uye-talep"
+    instagram_link = "https://www.instagram.com/nishdott"
+    linkedin_link = "https://www.linkedin.com/company/nishdot/about"
+    whatsapp_link = "https://chat.whatsapp.com/DiufgZg3t1C2a4Y5L4iOLi"
+    discord_link = "https://discord.gg/ddumxQaG"
+
+
+    message_content = (
+        f"**Sosyal medya hesaplarımız:**\n\n"
+        f"**Kulübümüze üye olmak için:** <{uyeolma_link}>\n"
+        f"**İnstagram:** <{instagram_link}>\n"
+        f"**Whatsapp:** <{whatsapp_link}>\n"
+        f"**Linkedin:** <{linkedin_link}>\n"
+        f"**Discord:** <{discord_link}>\n"
+    )
+
+    try:
+
+        await ctx.send(message_content)
+        # await ctx.message.delete()
+        
+    except discord.Forbidden:
+        print(f"HATA: {ctx.channel.name} kanalına !link mesajı gönderilemedi. İZİN EKSİK.")
+    except Exception as e:
+        print(f"!link KOMUTU HATASI: {e}")
+
+#Kulüp bilgisi komutu
+
+@bot.command()
+async def bilgi(ctx):
+    print(f"{ctx.author} tarafından !bilgi komutu kullanıldı.")
+    
+    message_content = (
+        "İstanbul Nişantaşı Üniversitesi Dijital Oyun Tasarımı Kulübü yani kısaca **Nishdot**,\n Oyun geliştirmeyi, oyun tasarlamayı ve bu süreçte ekip çalışmasını öğrenmek isteyen herkes için kuruldu. Amacımız; fikirlerinizi hayata geçirebileceğiniz, yeni beceriler kazanabileceğiniz ve oyun dünyasına adım atabileceğiniz bir topluluk oluşturmak. Burada birlikte öğreniyor, üretiyor ve oyunların arkasındaki yaratıcı süreci keşfediyoruz!"
+    )
+
+    try:
+        await ctx.send(message_content)
+        # await ctx.message.delete()
+        
+    except discord.Forbidden:
+        print(f"HATA: {ctx.channel.name} kanalına !bilgi mesajı gönderilemedi.")
+    except Exception as e:
+        print(f"!bilgi KOMUTU HATASI: {e}")
+
+#Yardım komutu
+
+@bot.command()
+async def yardim(ctx):
+    print(f"{ctx.author} tarafından !yardim komutu kullanıldı.")
+
+    message_content = (
+        "**Tonishbot Komutları:**\n\n"
+        "**!link:**\nNishdot'un tüm hesaplarına ulaşmak için kullanabileceğiniz komut.\n\n" 
+        "**!yk:**\nNishdot yönetim kurulunu görüntülemek için kullanabileceğiniz komut.\n"
+    )
+
+    try:
+        await ctx.send(message_content)
+        # await ctx.message.delete()
+
+    except discord.Forbidden:
+        print(f"HATA: {ctx.channel.name} kanalına !yk mesajı gönderilemedi.")
+    except Exception as e:
+        print(f"!yk KOMUTU HATASI: {e}")
+
+
+#Yönetim kurulu komutu
+
+@bot.command()
+async def yk(ctx):
+    print(f"{ctx.author} tarafından !yk komutu kullanıldı.")
+
+    message_content = (
+        "**Nishdot Yönetim Kurulu:**\n\n\n"
+        "**Başkan:** \nYurdakul Efe Arıkan\n\n"
+        "**Başkan Vekili:** \nMehmet Boran Bulut\n\n"
+        "**Başkan Yardımcısı:** \nÖmer Soysal\n\n"
+        "**Genel Sekreter:** \nEbru Karademir\n\n"
+        "**Organizasyon Sorumlusu:** \nOğulcan Danişment\n\n"
+        "**Sosyal Medya Koordinatörü:** \nFeyzanur Sarı\n\n"
+        "**Etkinlik Sorumlusu:** \nKaan Mersin\nKerem Çetin\n\n"
+    )
+
+    try:
+        await ctx.send(message_content)
+        # await ctx.message.delete()
+
+    except discord.Forbidden:
+        print(f"HATA: {ctx.channel.name} kanalına !yk mesajı gönderilemedi.")
+    except Exception as e:
+        print(f"!yk KOMUTU HATASI: {e}")
 
 # ÇALIŞTIR
 
