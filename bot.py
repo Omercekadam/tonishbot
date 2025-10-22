@@ -160,6 +160,8 @@ class RegistrationView(View):
         await interaction.response.send_modal(RegistrationModal())
         await interaction.user.remove_roles(interaction.guild.get_role(KAYITSIZ_ROLE_ID))
         print(f"Başarılı: {interaction.user.name} kullanıcısından 'Kayıtsız' rolü alındı.")
+        await interaction.user.add_roles(interaction.guild.get_role(TOPLULUK_ROLU_ID))
+        print(f"Başarılı: {interaction.user.name} kullanıcısına '{TOPLULUK_ROLU_ID}' rolü verildi.")
 
 # AÇILAN MENU
 class RoleSelect(Select):
@@ -399,12 +401,13 @@ async def on_member_join(member: discord.Member):
         guild = member.guild
         
         topluluk_rol = guild.get_role(TOPLULUK_ROLU_ID)
-        
+        kayitsiz_rol = guild.get_role(KAYITSIZ_ROLE_ID)
+
         if topluluk_rol is not None:
-            await member.add_roles(topluluk_rol)
-            print(f"Başarılı: {member.name} kullanıcısına '{topluluk_rol.name}' rolü verildi.")
+            await member.add_roles(kayitsiz_rol)
+            print(f"Başarılı: {member.name} kullanıcısına '{kayitsiz_rol.name}' rolü verildi.")
         else:
-            print(f"HATA: {TOPLULUK_ROLU_ID} ID'li Topluluk Üyesi rolü bulunamadı. Lütfen kontrol et.")
+            print(f"HATA: {KAYITSIZ_ROLE_ID} ID'li Kayıtsız rolü bulunamadı. Lütfen kontrol et.")
     
     except discord.Forbidden:
         print(f"HATA: {member.name} kullanıcısına rol verilemedi.")
