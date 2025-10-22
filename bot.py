@@ -158,6 +158,8 @@ class RegistrationView(View):
     )
     async def register_button_callback(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(RegistrationModal())
+        await interaction.user.remove_roles(interaction.guild.get_role(KAYITSIZ_ROLE_ID))
+        print(f"Başarılı: {interaction.user.name} kullanıcısından 'Kayıtsız' rolü alındı.")
 
 # AÇILAN MENU
 class RoleSelect(Select):
@@ -401,8 +403,6 @@ async def on_member_join(member: discord.Member):
         if topluluk_rol is not None:
             await member.add_roles(topluluk_rol)
             print(f"Başarılı: {member.name} kullanıcısına '{topluluk_rol.name}' rolü verildi.")
-            await member.remove_roles(guild.get_role(KAYITSIZ_ROLE_ID))
-            print(f"Başarılı: {member.name} kullanıcısından 'Kayıtsız' rolü alındı.")
         else:
             print(f"HATA: {TOPLULUK_ROLU_ID} ID'li Topluluk Üyesi rolü bulunamadı. Lütfen kontrol et.")
     
