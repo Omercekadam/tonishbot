@@ -21,6 +21,7 @@ ROLALMA_KANALI_ID=int(os.getenv('ROLALMA_KANALI_ID'))
 MODERATOR_ROLU_ID = int(os.getenv('MODERATOR_ROLU_ID')) 
 TICKET_CATEGORY_ID = int(os.getenv('TICKET_CATEGORY_ID'))
 TICKET_KANALI_ID = int(os.getenv('TICKET_KANALI_ID'))
+KAYITSIZ_ROLE_ID = int(os.getenv('KAYITSIZ_ROLE_ID'))
 
 # ROLLER
 
@@ -400,9 +401,11 @@ async def on_member_join(member: discord.Member):
         if topluluk_rol is not None:
             await member.add_roles(topluluk_rol)
             print(f"Başarılı: {member.name} kullanıcısına '{topluluk_rol.name}' rolü verildi.")
+            await member.remove_roles(guild.get_role(KAYITSIZ_ROLE_ID))
+            print(f"Başarılı: {member.name} kullanıcısından 'Kayıtsız' rolü alındı.")
         else:
             print(f"HATA: {TOPLULUK_ROLU_ID} ID'li Topluluk Üyesi rolü bulunamadı. Lütfen kontrol et.")
-            
+    
     except discord.Forbidden:
         print(f"HATA: {member.name} kullanıcısına rol verilemedi.")
     except Exception as e:
