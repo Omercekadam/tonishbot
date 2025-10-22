@@ -161,7 +161,7 @@ class RegistrationView(View):
         await interaction.user.remove_roles(interaction.guild.get_role(KAYITSIZ_ROLE_ID))
         print(f"Başarılı: {interaction.user.name} kullanıcısından 'Kayıtsız' rolü alındı.")
         await interaction.user.add_roles(interaction.guild.get_role(TOPLULUK_ROLU_ID))
-        print(f"Başarılı: {interaction.user.name} kullanıcısına '{TOPLULUK_ROLU_ID}' rolü verildi.")
+        print(f"Başarılı: {interaction.user.name} kullanıcısına 'Topluluk Üyesi' rolü verildi.")
 
 # AÇILAN MENU
 class RoleSelect(Select):
