@@ -828,7 +828,7 @@ async def duyuru_error(ctx, error):
         await ctx.send("Bu komutu kullanmak için 'Yönetici' iznine sahip olmalısın.", delete_after=10)
     elif isinstance(error, commands.MissingRequiredArgument):
 
-        await ctx.send("Hata: Lütfen duyuru için bir mesaj gir. Örnek: `!duyuru Herkese merhaba!`", delete_after=15)
+        await ctx.send("Hata: Lütfen duyuru için bir mesaj gir. Örnek: `!duyuru @everyone Herkese merhaba!`", delete_after=15)
     else:
         print(f"Duyuru komutunda beklenmeyen hata: {error}")
     
