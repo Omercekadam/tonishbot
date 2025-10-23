@@ -435,7 +435,10 @@ async def on_member_join(member: discord.Member):
                 font_welcome = ImageFont.truetype("font.ttf", 25)
                 
                 # --- B. Avatarı Çek ve Yuvarlak Yap ---
-                avatar_data = await member.avatar.read()
+                if member.avatar:
+                    avatar_data = await member.avatar.read()
+                else:
+                    avatar_data = await member.default_avatar.read()
                 avatar_image = Image.open(io.BytesIO(avatar_data)).convert("RGBA")
                 
                 # Senin istediğin 180x180 boyuta getiriyoruz
