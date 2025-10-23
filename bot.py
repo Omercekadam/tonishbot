@@ -1,11 +1,13 @@
 # TonishBot - Nişantaşı Üniversitesi Discord Botu
 
+
 #kütüphaneler
 import discord
 import os
 import io
 import datetime
 import pytz 
+import random
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from dotenv import load_dotenv
 from discord.ext import commands
@@ -32,7 +34,6 @@ ANNOUNCEMENT_CHANNEL_ID = int(os.getenv('ANNOUNCEMENT_CHANNEL_ID'))
 EVENT_COUNTER_CHANNEL_ID = int(os.getenv('EVENT_COUNTER_CHANNEL_ID'))
 
 # ROLLER
-
 ROLE_OPTIONS = {
     # "ROL_ID": {"label": "rol adı", "emoji": "💻", "description": "rol açıklaması (isteğe bağlı)"},
     
@@ -89,7 +90,6 @@ ROLE_OPTIONS = {
 }
 
 #INTENTS
-
 intents = discord.Intents.default()
 intents.members = True 
 intents.message_content = True
@@ -153,7 +153,6 @@ class RegistrationModal(Modal, title="TonishBot Kayıt Paneli"):
             print(f"Hata: {e}")
 
 # KAYIT BUTONU GÖRÜNÜMÜ
-
 class RegistrationView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -239,7 +238,6 @@ class RoleSelect(Select):
 
 
 #MENÜ SİLİNMESİN DİYE
-
 class RoleSelectView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -247,7 +245,6 @@ class RoleSelectView(View):
 
 
 # Ticket sistemi görüntüleri
-
 class TicketCloseView(View):
     def __init__(self):
         super().__init__(timeout=None) 
@@ -301,7 +298,6 @@ class TicketCloseView(View):
 
 
 #Ticket oluşturma görünümü
-
 class TicketCreationView(View):
     def __init__(self):
         super().__init__(timeout=None) 
@@ -386,7 +382,6 @@ class TicketCreationView(View):
         
 
 # BOT ÇALIŞTI
-
 @bot.event
 async def on_ready():
     print(f'Bot {bot.user} olarak giriş yaptı!')
@@ -400,7 +395,6 @@ async def on_ready():
     print("Tüm kalıcı görünümler (View) başarıyla yüklendi.")
 
 # YENİ ÜYE
-
 @bot.event
 async def on_member_join(member: discord.Member):
     kayit_channel = bot.get_channel(KAYIT_KANALI_ID)
@@ -494,7 +488,6 @@ async def on_member_join(member: discord.Member):
         print(f"HATA: {KAYIT_KANALI_ID} ID'li kanal bulunamadı. Lütfen kontrol et.")
 
 # KOMUTLAR
-
 @bot.command()
 async def kayittest(ctx):
     print(f"{ctx.author} tarafından !kayittest komutu kullanıldı.")
@@ -506,19 +499,18 @@ async def kayittest(ctx):
     await ctx.send(message_content, view=RegistrationView())
 
 
-#kayıt alma başlangıç
-
+#kayıt alma komutu
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def kayital(ctx):
     print(f"{ctx.author} tarafından !kayital komutu kullanıldı.")
     
     message_content = (
-        f"Merhaba, Nishdotlu! Nickini güncellemek için lütfen aşağıdaki butona bas."
+        f"Merhaba, Nishdotlu! Nickname'ini güncellemek için lütfen aşağıdaki butona bas."
     )
     await ctx.send(message_content, view=RegistrationView())
-# ROL MENUSU KOMUTU
 
+# ROL MENUSU KOMUTU
 @bot.command()
 @commands.has_permissions(administrator=True) 
 async def rolmenusu(ctx):
@@ -536,53 +528,41 @@ async def rolmenusu(ctx):
     await ctx.message.delete()
 
 #Rolleri anlatan mesaj
-
 @bot.command()
-@commands.has_permissions(administrator=True) # Sadece Yöneticiler kullanabilsin
+@commands.has_permissions(administrator=True)
 async def rolbilgi(ctx):
     """
     Rol bilgilendirme embed'ini bu komutun kullanıldığı kanala gönderir.
     """
-    # Neden yapıyoruz? ROLE_OPTIONS'daki tüm rolleri ve açıklamalarını
-    # listeleyen şık bir embed mesajı oluşturmak için.
     print(f"{ctx.author} tarafından !rolbilgi komutu kullanıldı.")
     
     try:
-        # 1. Ana Embed Mesajını Oluştur
         embed = discord.Embed(
             title="📜 Sunucu Rolleri ve Açıklamaları",
             description="Aşağıdaki listeden rollerimizin ne anlama geldiğini öğrenebilirsiniz.\nRollerinizi almak veya değiştirmek için bu mesajın altındaki açılır menüyü kullanın.",
-            color=0xFEE75C # Hoş bir sarı tonu (veya istediğin renk)
+            color=0xFEE75C 
         )
         
         if ctx.guild.icon:
             embed.set_author(name=f"{ctx.guild.name} Rol Rehberi", icon_url=ctx.guild.icon.url)
 
-        # 2. ROLE_OPTIONS Ayarlarını Döngüye Al ve Alan (Field) Olarak Ekle
-        # Neden yapıyoruz? Ayar dosyasındaki tüm rolleri otomatik olarak
-        # embed'e ekliyoruz. Yeni rol eklediğinde burayı değiştirmen gerekmez.
         if not ROLE_OPTIONS:
             await ctx.send("Hata: `ROLE_OPTIONS` ayarları boş görünüyor. Lütfen kod dosyasını kontrol et.")
             return
 
         for role_id, data in ROLE_OPTIONS.items():
-            # data'dan bilgileri al, eğer emoji/açıklama yoksa varsayılan metin kullan
-            emoji = data.get("emoji", "🔹") # Emoji yoksa mavi kare
+            emoji = data.get("emoji", "🔹")
             label = data.get("label", "İsimsiz Rol")
             description = data.get("description", "Açıklama belirtilmemiş.")
             
-            # Embed'e yeni bir alan ekle
             embed.add_field(
-                name=f"{emoji} {label}", # Başlık: 💻 Game Developer
-                value=description,       # İçerik: Oyun geliştirme ile...
-                inline=False # Her rolün tüm satırı kaplamasını sağlar (daha okunaklı)
-                             # 'inline=True' yaparsan yan yana sıralar
+                name=f"{emoji} {label}", 
+                value=description,       
+                inline=False 
             )
 
-        # 3. Embed'i kanala gönder
         await ctx.send(embed=embed)
         
-        # Komut mesajını temizle
         await ctx.message.delete()
         print(f"Rol bilgilendirme mesajı '{ctx.channel.name}' kanalına başarıyla gönderildi.")
 
@@ -595,14 +575,12 @@ async def rolbilgi(ctx):
 
 @rolbilgi.error
 async def rolbilgi_error(ctx, error):
-    # Neden yapıyoruz? Komutu yetkisi olmayan biri kullanırsa uyarıyoruz.
+
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("Üzgünüm, bu komutu sadece sunucu yöneticileri kullanabilir.", delete_after=10)
         await ctx.message.delete(delay=10)
-# --- YENİ BÖLÜM SONU ---
 
 #Ticket mesajını kurma
-
 @bot.command()
 @commands.has_permissions(administrator=True) 
 async def ticketkur(ctx, *, mesaj="Destek almak için aşağıdaki butona tıklayarak bir ticket oluşturabilirsiniz."):
@@ -653,7 +631,6 @@ async def ticketkur_error(ctx, error):
 
 
 #Linkleri paylaşan komut
-
 @bot.command()
 async def link(ctx):
 
@@ -686,7 +663,6 @@ async def link(ctx):
         print(f"!link KOMUTU HATASI: {e}")
 
 #Kulüp bilgisi komutu
-
 @bot.command()
 async def bilgi(ctx):
     print(f"{ctx.author} tarafından !bilgi komutu kullanıldı.")
@@ -705,7 +681,6 @@ async def bilgi(ctx):
         print(f"!bilgi KOMUTU HATASI: {e}")
 
 #Yardım komutu
-
 @bot.command()
 async def yardim(ctx):
     print(f"{ctx.author} tarafından !yardim komutu kullanıldı.")
@@ -727,7 +702,6 @@ async def yardim(ctx):
 
 
 #Yönetim kurulu komutu
-
 @bot.command()
 async def yk(ctx):
     print(f"{ctx.author} tarafından !yk komutu kullanıldı.")
@@ -753,7 +727,6 @@ async def yk(ctx):
         print(f"!yk KOMUTU HATASI: {e}")
 
 #duyuru komutu
-
 @bot.command()
 @commands.has_permissions(administrator=True) 
 async def duyuru(ctx, *, message: str):
@@ -849,6 +822,7 @@ async def duyuru_error(ctx, error):
     except:
         pass
 
+#etkinlik sayacı komutu
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def etkinliksayaci(ctx, tarih_str: str, saat_str: str, etkinlik_adi: str, *, aciklama: str):
@@ -940,7 +914,20 @@ async def etkinliksayaci_error(ctx, error):
     except:
         pass
 
+@bot.command()
+async def zar(ctx,yuzey_sayisi,int=6):
+    if yuzey_sayisi <2:
+        await ctx.send("Lütfen en az 2 yüzeyli bir zar sayısı girin.")
+        return
+    sonuc = random.randint(1,yuzey_sayisi)
+    await ctx.send(f"🎲 {ctx.author.mention} {yuzey_sayisi} yüzlü bir zar attı ve sonuç: **{sonuc}**")
 
+@zar.error
+async def zar_error(ctx, error):
+    if isinstance(error, commands.BadArgument):
+        await ctx.send(f"Hata: Lütfen geçerli bir sayı girin. Örnek: `!zar 20`")
+    else:
+        print(f"Zar komutunda beklenmeyen hata: {error}")
 
 # ÇALIŞTIR
 
