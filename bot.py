@@ -743,7 +743,7 @@ async def yk(ctx):
 #duyuru komutu
 
 @bot.command()
-@commands.has_permissions(administrator=True) # Komutu sadece 'Yönetici' izni olanlar kullanabilir
+@commands.has_permissions(administrator=True) 
 async def duyuru(ctx, *, message: str):
     """
     Kullanım: !duyuru [@rol] <mesajınız>
@@ -844,36 +844,26 @@ async def etkinliksayaci(ctx, tarih_str: str, saat_str: str, etkinlik_adi: str, 
     Kullanım: !etkinliksayaci "GG.AA.YYYY" "HH:MM" "Etkinlik Adı" "Etkinlik hakkında bilgi..."
     (Çok kelimeli adlar ve açıklamalar için tırnak " " kullanın!)
     """
-    
-    # --- 1. Güvenlik Kontrolü: Doğru Kanal mı? ---
+
     if ctx.channel.id != ADMIN_COMMAND_CHANNEL_ID:
         await ctx.send(f"Bu komut sadece <#{ADMIN_COMMAND_CHANNEL_ID}> kanalında kullanılabilir.", delete_after=10)
         await ctx.message.delete(delay=10)
         return
 
-    # --- 2. Hedef Kanalı Bulma ---
     target_channel = bot.get_channel(EVENT_COUNTER_CHANNEL_ID)
     if not target_channel:
         print(f"HATA: {EVENT_COUNTER_CHANNEL_ID} ID'li etkinlik kanalı bulunamadı.")
         await ctx.send("Etkinlik kanalı bulunamadı. Lütfen Railway 'Variables' panelini kontrol et.", ephemeral=True)
         return
 
-    # --- 3. Zaman Damgasını (Timestamp) Oluşturma ---
-    # Neden? Kullanıcıdan gelen "28.10.2025" ve "19:00" gibi metinleri,
-    # Discord'un anlayacağı evrensel bir zaman damgasına çevirmemiz gerekiyor.
     try:
-        # Türkiye saat dilimini (timezone) tanımlıyoruz
         turkey_tz = pytz.timezone("Europe/Istanbul")
-        
-        # Gelen metni bir "datetime" objesine çeviriyoruz
-        # %d.%m.%Y -> "Gün.Ay.Yıl" formatını bekler
+
         dt_str = f"{tarih_str} {saat_str}"
         local_dt = datetime.datetime.strptime(dt_str, "%d.%m.%Y %H:%M")
         
-        # Bu tarihi "Türkiye saatine göre" olarak etiketliyoruz
         aware_dt = turkey_tz.localize(local_dt)
         
-        # Bu tarihi evrensel (Unix timestamp) saniye formatına çeviriyoruz
         timestamp_unix = int(aware_dt.timestamp())
 
     except ValueError:
@@ -885,7 +875,7 @@ async def etkinliksayaci(ctx, tarih_str: str, saat_str: str, etkinlik_adi: str, 
         await ctx.send(f"Bilinmeyen bir zaman hatası oluştu: {e}", ephemeral=True)
         return
 
-    # --- 4. "Havalı" Embed'i Oluşturma (İsteğine Göre) ---
+
     embed = discord.Embed(
         title=f"🗓️ {etkinlik_adi}", 
         description=aciklama,  
@@ -898,7 +888,6 @@ async def etkinliksayaci(ctx, tarih_str: str, saat_str: str, etkinlik_adi: str, 
         inline=False
     )
     
-    # <t:..:R> -> Göreceli (Canlı) Zaman: "5 gün içinde" / "1 saat içinde"
     embed.add_field(
         name="Kalan Süre",
         value=f"<t:{timestamp_unix}:R>",
@@ -906,12 +895,11 @@ async def etkinliksayaci(ctx, tarih_str: str, saat_str: str, etkinlik_adi: str, 
     )
 
     if ctx.guild.icon:
-        embed.set_thumbnail(url=ctx.guild.icon.url) # Sunucu logosu
+        embed.set_thumbnail(url=ctx.guild.icon.url) 
     
     embed.set_footer(text=f"{ctx.guild.name} Etkinlik Takvimi")
     embed.timestamp = discord.utils.utcnow()
 
-    # --- 5. Gönderme ve Temizlik ---
     try:
         await target_channel.send(embed=embed)
         await ctx.send("✅ Etkinlik sayacı başarıyla duyuru kanalına gönderildi.", ephemeral=True, delete_after=10)
@@ -921,13 +909,11 @@ async def etkinliksayaci(ctx, tarih_str: str, saat_str: str, etkinlik_adi: str, 
         print(f"ETKİNLİKSAYACI GÖNDERME HATASI: {e}")
         await ctx.send(f"Embed gönderilirken hata oluştu: {e}", ephemeral=True)
 
-# Neden? Komutu yanlış kullanan (örn: 4 argümanı da girmeyen) yöneticileri uyarmak için.
 @etkinliksayaci.error
 async def etkinliksayaci_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
         await ctx.send("Bu komutu kullanmak için 'Yönetici' iznine sahip olmalısın.", delete_after=10)
     elif isinstance(error, commands.MissingRequiredArgument):
-        # Bu hata, argümanlar eksik girilince tetiklenir
         await ctx.send(
             "Hata: Eksik argüman girdin.\n**Kullanım:** `!etkinliksayaci \"Tarih\" \"Saat\" \"Başlık\" \"Açıklama\"`\n"
             "**Örnek:** `!etkinliksayaci \"28.10.2025\" \"21:00\" \"Büyük Oyun Gecesi\" \"Herkes davetlidir!\"`\n"
