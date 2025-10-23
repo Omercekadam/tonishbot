@@ -509,6 +509,7 @@ async def kayittest(ctx):
 #kayıt alma başlangıç
 
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def kayital(ctx):
     print(f"{ctx.author} tarafından !kayital komutu kullanıldı.")
     
