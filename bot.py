@@ -689,6 +689,7 @@ async def yardim(ctx):
         "**Tonishbot Komutları:**\n\n"
         "**!link:**\nNishdot'un tüm hesaplarına ulaşmak için kullanabileceğiniz komut.\n\n" 
         "**!yk:**\nNishdot yönetim kurulunu görüntülemek için kullanabileceğiniz komut.\n"
+        "**!zar:**\nSanal zar atmak için kullanabileceğiniz komut.('!zar [yüzey sayısı]')\n\n"
     )
 
     try:
@@ -914,6 +915,7 @@ async def etkinliksayaci_error(ctx, error):
     except:
         pass
 
+#zar komutu
 @bot.command()
 async def zar(ctx,yuzey_sayisi=6):
     try:
