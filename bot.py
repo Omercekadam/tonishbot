@@ -505,6 +505,17 @@ async def kayittest(ctx):
     )
     await ctx.send(message_content, view=RegistrationView())
 
+
+#kayıt alma başlangıç
+
+@bot.command()
+async def kayital(ctx):
+    print(f"{ctx.author} tarafından !kayital komutu kullanıldı.")
+    
+    message_content = (
+        f"Merhaba, {ctx.author.mention}! Kayıt sistemini başlatmak için lütfen aşağıdaki butona basarak kayıt ol."
+    )
+    await ctx.send(message_content, view=RegistrationView())
 # ROL MENUSU KOMUTU
 
 @bot.command()
