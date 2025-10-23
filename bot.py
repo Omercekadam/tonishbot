@@ -514,7 +514,7 @@ async def kayital(ctx):
     print(f"{ctx.author} tarafından !kayital komutu kullanıldı.")
     
     message_content = (
-        f"Merhaba, {ctx.author.mention}! Kayıt sistemini başlatmak için lütfen aşağıdaki butona basarak kayıt ol."
+        f"Merhaba, Nishdotlu! Nickini güncellemek için lütfen aşağıdaki butona bas."
     )
     await ctx.send(message_content, view=RegistrationView())
 # ROL MENUSU KOMUTU
