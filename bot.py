@@ -915,17 +915,21 @@ async def etkinliksayaci_error(ctx, error):
         pass
 
 @bot.command()
-async def zar(ctx,yuzey_sayisi,int=6):
-    if yuzey_sayisi <2:
-        await ctx.send("Lütfen en az 2 yüzeyli bir zar sayısı girin.")
+async def zar(ctx,yuzey_sayisi=6):
+    try:
+        yuzey_sayisi_int=int(yuzey_sayisi)
+    except ValueError:
+        await ctx.send(f"Hata: Lütfen geçerli bir sayı girin. Örnek: '!zar 20'")
         return
-    sonuc = random.randint(1,yuzey_sayisi)
-    await ctx.send(f"🎲 {ctx.author.mention} {yuzey_sayisi} yüzlü bir zar attı ve sonuç: **{sonuc}**")
-
+    if yuzey_sayisi_int < 2:
+        await ctx.send("Hata: Zar en az 2 yüzeyli olmalıdır.")
+        return
+    sonuc = random.randint(1, yuzey_sayisi_int)
+    await ctx.send(f"{ctx.author.mention}, {yuzey_sayisi_int} yüzeyli zar atıldı: **{sonuc}**")
 @zar.error
 async def zar_error(ctx, error):
-    if isinstance(error, commands.BadArgument):
-        await ctx.send(f"Hata: Lütfen geçerli bir sayı girin. Örnek: `!zar 20`")
+    if isinstance(error, commands.CommandInvokeError):
+        print(f"Zar komutu hata: {error.original}")
     else:
         print(f"Zar komutunda beklenmeyen hata: {error}")
 
