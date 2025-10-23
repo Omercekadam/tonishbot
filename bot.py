@@ -422,61 +422,52 @@ async def on_member_join(member: discord.Member):
 
     if welcome_channel is not None: 
             try:
-                # Neden? Resim oluşturma başarısız olursa botun çökmemesi
-                # ve en azından bir metin mesajı atabilmesi için try/except bloğundayız.
                 print(f"{member.name} için karşılama görseli oluşturuluyor...")
                 
-                # --- A. Varlıkları Yükle ---
-                # (Bu dosyaların GitHub reponda, bot.py ile aynı yerde olması ŞART)
-                # Banner 800x250 olacak
                 background = Image.open("background.png").convert("RGBA")
-                # Fontları senin belirttiğin puntolarda yüklüyoruz
                 font_user = ImageFont.truetype("font.ttf", 50)
                 font_welcome = ImageFont.truetype("font.ttf", 25)
                 
-                # --- B. Avatarı Çek ve Yuvarlak Yap ---
+               
                 if member.avatar:
                     avatar_data = await member.avatar.read()
                 else:
                     avatar_data = await member.default_avatar.read()
                 avatar_image = Image.open(io.BytesIO(avatar_data)).convert("RGBA")
                 
-                # Senin istediğin 180x180 boyuta getiriyoruz
+               
                 avatar_size = (180, 180)
                 avatar_image = avatar_image.resize(avatar_size)
 
-                # Yuvarlak maskeyi oluştur
+                
                 mask = Image.new("L", avatar_size, 0)
                 draw_mask = ImageDraw.Draw(mask)
                 draw_mask.ellipse((0, 0) + avatar_size, fill=255)
                 
-                # --- C. Resimleri Birleştir ve Yazıları Yaz ---
+                
                 draw_surface = background.copy()
                 
-                # Avatarı senin verdiğin (x:25, y:35) koordinatına yapıştır
+                
                 avatar_pos = (25, 35)
                 draw_surface.paste(avatar_image, avatar_pos, mask)
                 
                 draw = ImageDraw.Draw(draw_surface)
-                
-                # Username'i (x:210, y:45) koordinatına 50 punto ile yaz
-                text_user = member.display_name # 'display_name' kullanmak, 'name'den daha iyidir
+                text_user = member.display_name
                 user_pos = (210, 45)
-                draw.text(user_pos, text_user, font=font_user, fill="#FFFFFF") # Beyaz renk varsaydım
+                draw.text(user_pos, text_user, font=font_user, fill="#000000") 
                 
-                # Hoş geldin yazısını (x:210, y:125) koordinatına 25 punto ile yaz
                 text_welcome = f"{member.guild.name}'a Hoşgeldin"
                 welcome_pos = (210, 125)
-                draw.text(welcome_pos, text_welcome, font=font_welcome, fill="#CCCCCC") # Gri tonu varsaydım
+                draw.text(welcome_pos, text_welcome, font=font_welcome, fill="#505050") 
 
-                # --- D. Resmi Discord'a Gönder ---
+
                 final_buffer = io.BytesIO()
                 draw_surface.save(final_buffer, "PNG")
                 final_buffer.seek(0)
                 
                 file_to_send = discord.File(final_buffer, filename="welcome.png")
 
-                # Resmi 'welcome_channel'a gönderiyoruz
+
                 await welcome_channel.send(
                     f"Sunucumuza hoş geldin, {member.mention}! :tada:",
                     file=file_to_send
@@ -484,9 +475,6 @@ async def on_member_join(member: discord.Member):
                 print(f"Görsel karşılama mesajı {member.name} için gönderildi.")
 
             except Exception as e:
-                # --- E. Hata Yönetimi ---
-                # Eğer resim oluşturma başarısız olursa (örn: background.png yoksa),
-                # 'welcome_channel'a normal bir metin mesajı atarız.
                 print(f"!!! GÖRSEL KARŞILAMA HATASI: {e} !!!")
                 print(f"Eski tip metin mesajı gönderiliyor...")
                 await welcome_channel.send(f"Aramıza hoş geldin, {member.mention}! :tada:")
