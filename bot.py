@@ -25,6 +25,8 @@ TICKET_CATEGORY_ID = int(os.getenv('TICKET_CATEGORY_ID'))
 TICKET_KANALI_ID = int(os.getenv('TICKET_KANALI_ID'))
 KAYITSIZ_ROLE_ID = int(os.getenv('KAYITSIZ_ROLE_ID'))
 WELCOME_CHANNEL_ID = int(os.getenv('WELCOME_CHANNEL_ID'))
+ADMIN_COMMAND_CHANNEL_ID = int(os.getenv('ADMIN_COMMAND_CHANNEL_ID'))
+ANNOUNCEMENT_CHANNEL_ID = int(os.getenv('ANNOUNCEMENT_CHANNEL_ID'))
 
 # ROLLER
 
@@ -734,6 +736,105 @@ async def yk(ctx):
         print(f"HATA: {ctx.channel.name} kanalına !yk mesajı gönderilemedi.")
     except Exception as e:
         print(f"!yk KOMUTU HATASI: {e}")
+
+
+@bot.command()
+@commands.has_permissions(administrator=True) # Komutu sadece 'Yönetici' izni olanlar kullanabilir
+async def duyuru(ctx, *, message: str):
+    """
+    Belirlenen duyuru kanalına şık bir embed mesajı gönderir.
+    Kullanım: !duyuru [@rol] <mesajınız>
+    """
+    
+    if ctx.channel.id != ADMIN_COMMAND_CHANNEL_ID:
+        try:
+            await ctx.send(f"Duyuru komutu sadece <#{ADMIN_COMMAND_CHANNEL_ID}> kanalında kullanılabilir.", delete_after=10)
+            await ctx.message.delete(delay=10)
+        except discord.Forbidden:
+            pass
+        return
+
+    target_channel = bot.get_channel(ANNOUNCEMENT_CHANNEL_ID)
+    if not target_channel:
+        print(f"HATA: {ANNOUNCEMENT_CHANNEL_ID} ID'li duyuru kanalı bulunamadı.")
+        await ctx.send("Duyuru kanalı bulunamadı. Lütfen Railway 'Variables' panelini kontrol et.", ephemeral=True)
+        return
+    
+    print(f"{ctx.author.display_name} bir duyuru yapıyor...")
+    
+#Embed oluşturma
+    
+    
+    ping_content = None         
+    description_content = message 
+
+    if message.startswith("<@&"):
+        end_index = message.find('>')
+        if end_index != -1:
+            ping_content = message[:end_index+1]
+            description_content = message[end_index+1:].lstrip() 
+    
+    elif message.startswith("@everyone"):
+        ping_content = "@everyone"
+        description_content = message.replace("@everyone", "", 1).lstrip()
+    elif message.startswith("@here"):
+        ping_content = "@here"
+        description_content = message.replace("@here", "", 1).lstrip()
+
+    embed = discord.Embed(
+        title="📣 Yeni Duyuru!",
+        description=description_content,   
+        color=0xFFEA00
+    )
+#duyuran 
+    if ctx.author.avatar:
+        embed.set_author(name=f"Duyuran: {ctx.author.display_name}", icon_url=ctx.author.avatar.url)
+    else:
+        embed.set_author(name=f"Duyuran: {ctx.author.display_name}")
+
+#sunucu logosu
+    if ctx.guild.icon:
+        embed.set_thumbnail(url=ctx.guild.icon.url)
+    
+#bot imzası
+    if bot.user.avatar:
+        embed.set_footer(text=f"{ctx.guild.name} | TonishBot", icon_url=bot.user.avatar.url)
+    else:
+        embed.set_footer(text=f"{ctx.guild.name} | TonishBot")
+        
+    embed.timestamp = discord.utils.utcnow() #zaman
+    
+    try:
+
+        await target_channel.send(content=ping_content, embed=embed)
+        print(f"Duyuru kanalı '{target_channel.name}' kanalına duyuru gönderildi.")
+        await ctx.send("✅ Duyurun başarıyla gönderildi.", ephemeral=True, delete_after=10)
+
+        await ctx.message.delete()
+        
+    except discord.Forbidden:
+        print("HATA: Duyuru kanalına mesaj gönderme iznim yok.")
+        await ctx.send("Hata: Duyuru kanalına mesaj gönderme iznim yok. İzinlerimi kontrol et.")
+    except Exception as e:
+        print(f"DUYURU KOMUTU HATASI: {e}")
+        await ctx.send(f"Bilinmeyen bir hata oluştu: {e}")
+
+@duyuru.error
+async def duyuru_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("Bu komutu kullanmak için 'Yönetici' iznine sahip olmalısın.", delete_after=10)
+    elif isinstance(error, commands.MissingRequiredArgument):
+
+        await ctx.send("Hata: Lütfen duyuru için bir mesaj gir. Örnek: `!duyuru Herkese merhaba!`", delete_after=15)
+    else:
+        print(f"Duyuru komutunda beklenmeyen hata: {error}")
+    
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+
+
 
 # ÇALIŞTIR
 
