@@ -4,6 +4,8 @@
 import discord
 import os
 import io
+import datetime
+import pytz 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from dotenv import load_dotenv
 from discord.ext import commands
@@ -27,6 +29,7 @@ KAYITSIZ_ROLE_ID = int(os.getenv('KAYITSIZ_ROLE_ID'))
 WELCOME_CHANNEL_ID = int(os.getenv('WELCOME_CHANNEL_ID'))
 ADMIN_COMMAND_CHANNEL_ID = int(os.getenv('ADMIN_COMMAND_CHANNEL_ID'))
 ANNOUNCEMENT_CHANNEL_ID = int(os.getenv('ANNOUNCEMENT_CHANNEL_ID'))
+EVENT_COUNTER_CHANNEL_ID = int(os.getenv('EVENT_COUNTER_CHANNEL_ID'))
 
 # ROLLER
 
@@ -490,7 +493,7 @@ async def on_member_join(member: discord.Member):
     else:
         print(f"HATA: {KAYIT_KANALI_ID} ID'li kanal bulunamadı. Lütfen kontrol et.")
 
-# !KAYITTEST KOMUTU
+# KOMUTLAR
 
 @bot.command()
 async def kayittest(ctx):
@@ -737,12 +740,12 @@ async def yk(ctx):
     except Exception as e:
         print(f"!yk KOMUTU HATASI: {e}")
 
+#duyuru komutu
 
 @bot.command()
 @commands.has_permissions(administrator=True) # Komutu sadece 'Yönetici' izni olanlar kullanabilir
 async def duyuru(ctx, *, message: str):
     """
-    Belirlenen duyuru kanalına şık bir embed mesajı gönderir.
     Kullanım: !duyuru [@rol] <mesajınız>
     """
     
@@ -828,6 +831,111 @@ async def duyuru_error(ctx, error):
         await ctx.send("Hata: Lütfen duyuru için bir mesaj gir. Örnek: `!duyuru Herkese merhaba!`", delete_after=15)
     else:
         print(f"Duyuru komutunda beklenmeyen hata: {error}")
+    
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def etkinliksayaci(ctx, tarih_str: str, saat_str: str, etkinlik_adi: str, *, aciklama: str):
+    """
+    Kullanım: !etkinliksayaci "GG.AA.YYYY" "HH:MM" "Etkinlik Adı" "Etkinlik hakkında bilgi..."
+    (Çok kelimeli adlar ve açıklamalar için tırnak " " kullanın!)
+    """
+    
+    # --- 1. Güvenlik Kontrolü: Doğru Kanal mı? ---
+    if ctx.channel.id != ADMIN_COMMAND_CHANNEL_ID:
+        await ctx.send(f"Bu komut sadece <#{ADMIN_COMMAND_CHANNEL_ID}> kanalında kullanılabilir.", delete_after=10)
+        await ctx.message.delete(delay=10)
+        return
+
+    # --- 2. Hedef Kanalı Bulma ---
+    target_channel = bot.get_channel(EVENT_COUNTER_CHANNEL_ID)
+    if not target_channel:
+        print(f"HATA: {EVENT_COUNTER_CHANNEL_ID} ID'li etkinlik kanalı bulunamadı.")
+        await ctx.send("Etkinlik kanalı bulunamadı. Lütfen Railway 'Variables' panelini kontrol et.", ephemeral=True)
+        return
+
+    # --- 3. Zaman Damgasını (Timestamp) Oluşturma ---
+    # Neden? Kullanıcıdan gelen "28.10.2025" ve "19:00" gibi metinleri,
+    # Discord'un anlayacağı evrensel bir zaman damgasına çevirmemiz gerekiyor.
+    try:
+        # Türkiye saat dilimini (timezone) tanımlıyoruz
+        turkey_tz = pytz.timezone("Europe/Istanbul")
+        
+        # Gelen metni bir "datetime" objesine çeviriyoruz
+        # %d.%m.%Y -> "Gün.Ay.Yıl" formatını bekler
+        dt_str = f"{tarih_str} {saat_str}"
+        local_dt = datetime.datetime.strptime(dt_str, "%d.%m.%Y %H:%M")
+        
+        # Bu tarihi "Türkiye saatine göre" olarak etiketliyoruz
+        aware_dt = turkey_tz.localize(local_dt)
+        
+        # Bu tarihi evrensel (Unix timestamp) saniye formatına çeviriyoruz
+        timestamp_unix = int(aware_dt.timestamp())
+
+    except ValueError:
+        await ctx.send("Hata: Tarih veya saat formatı yanlış. Lütfen `GG.AA.YYYY` ve `HH:MM` formatlarını kullanın.\nÖrnek: `!etkinliksayaci \"28.10.2025\" \"19:00\" \"Oyun Gecesi\" \"Açıklama\"`", delete_after=20)
+        await ctx.message.delete(delay=20)
+        return
+    except Exception as e:
+        print(f"ETKİNLİKSAYACI ZAMAN HATASI: {e}")
+        await ctx.send(f"Bilinmeyen bir zaman hatası oluştu: {e}", ephemeral=True)
+        return
+
+    # --- 4. "Havalı" Embed'i Oluşturma (İsteğine Göre) ---
+    embed = discord.Embed(
+        title=f"🗓️ {etkinlik_adi}", 
+        description=aciklama,  
+        color=0xeb596d 
+    )
+    
+    embed.add_field(
+        name="Etkinlik Zamanı",
+        value=f"<t:{timestamp_unix}:F>",
+        inline=False
+    )
+    
+    # <t:..:R> -> Göreceli (Canlı) Zaman: "5 gün içinde" / "1 saat içinde"
+    embed.add_field(
+        name="Kalan Süre",
+        value=f"<t:{timestamp_unix}:R>",
+        inline=False
+    )
+
+    if ctx.guild.icon:
+        embed.set_thumbnail(url=ctx.guild.icon.url) # Sunucu logosu
+    
+    embed.set_footer(text=f"{ctx.guild.name} Etkinlik Takvimi")
+    embed.timestamp = discord.utils.utcnow()
+
+    # --- 5. Gönderme ve Temizlik ---
+    try:
+        await target_channel.send(embed=embed)
+        await ctx.send("✅ Etkinlik sayacı başarıyla duyuru kanalına gönderildi.", ephemeral=True, delete_after=10)
+        await ctx.message.delete()
+        
+    except Exception as e:
+        print(f"ETKİNLİKSAYACI GÖNDERME HATASI: {e}")
+        await ctx.send(f"Embed gönderilirken hata oluştu: {e}", ephemeral=True)
+
+# Neden? Komutu yanlış kullanan (örn: 4 argümanı da girmeyen) yöneticileri uyarmak için.
+@etkinliksayaci.error
+async def etkinliksayaci_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("Bu komutu kullanmak için 'Yönetici' iznine sahip olmalısın.", delete_after=10)
+    elif isinstance(error, commands.MissingRequiredArgument):
+        # Bu hata, argümanlar eksik girilince tetiklenir
+        await ctx.send(
+            "Hata: Eksik argüman girdin.\n**Kullanım:** `!etkinliksayaci \"Tarih\" \"Saat\" \"Başlık\" \"Açıklama\"`\n"
+            "**Örnek:** `!etkinliksayaci \"28.10.2025\" \"21:00\" \"Büyük Oyun Gecesi\" \"Herkes davetlidir!\"`\n"
+            "(Lütfen çok kelimeli kısımlar için tırnak işareti `\" \"` kullanın.)",
+            delete_after=30
+        )
+    else:
+        print(f"Etkinlik sayacı komutunda beklenmeyen hata: {error}")
     
     try:
         await ctx.message.delete()
