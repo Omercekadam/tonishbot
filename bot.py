@@ -583,7 +583,7 @@ async def rolbilgi_error(ctx, error):
 #Ticket mesajını kurma
 @bot.command()
 @commands.has_permissions(administrator=True) 
-async def ticketkur(ctx, *, mesaj="Destek almak için aşağıdaki butona tıklayarak bir ticket oluşturabilirsiniz."):
+async def ticketkur(ctx, *, mesaj="Destek almak için aşağıdaki butona tıklayarak bir ticket oluşturabilirsiniz.⬇️"):
     """
     Ticket oluşturma embed'ini ve butonunu bu komutun kullanıldığı kanala gönderir.
     """
@@ -687,9 +687,9 @@ async def yardim(ctx):
 
     message_content = (
         "**Tonishbot Komutları:**\n\n"
-        "**!link:**\nNishdot'un tüm hesaplarına ulaşmak için kullanabileceğiniz komut.\n\n" 
-        "**!yk:**\nNishdot yönetim kurulunu görüntülemek için kullanabileceğiniz komut.\n"
-        "**!zar:**\nSanal zar atmak için kullanabileceğiniz komut.('!zar [yüzey sayısı]')\n\n"
+        "**!link:**\n📱Nishdot'un tüm hesaplarına ulaşmak için kullanabileceğiniz komut.\n\n" 
+        "**!yk:**\n👨‍💼👩‍💼Nishdot yönetim kurulunu görüntülemek için kullanabileceğiniz komut.\n"
+        "**!zar:**\n🎲Sanal zar atmak için kullanabileceğiniz komut.('!zar [yüzey sayısı]')\n\n"
     )
 
     try:
