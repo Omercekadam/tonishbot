@@ -927,7 +927,7 @@ async def zar(ctx,yuzey_sayisi=6):
         await ctx.send("Hata: Zar en az 2 yüzeyli olmalıdır.")
         return
     sonuc = random.randint(1, yuzey_sayisi_int)
-    await ctx.send(f"{ctx.author.mention}, {yuzey_sayisi_int} yüzeyli zar atıldı: **{sonuc}**")
+    await ctx.send(f"🎲 {ctx.author.mention}, {yuzey_sayisi_int} yüzeyli zar atıldı: **{sonuc}**")
 @zar.error
 async def zar_error(ctx, error):
     if isinstance(error, commands.CommandInvokeError):
