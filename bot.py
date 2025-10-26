@@ -2,7 +2,6 @@
 
 
 #kütüphaneler
-from asyncio import tasks
 import discord
 import os
 import io
@@ -13,7 +12,7 @@ import sqlite3
 from datetime import datetime, timezone, time
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from dotenv import load_dotenv
-from discord.ext import commands
+from discord.ext import commands ,tasks
 from discord import app_commands 
 from discord.ui import View, Button, Modal, TextInput, Select 
 
