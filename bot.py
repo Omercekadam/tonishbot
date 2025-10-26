@@ -1412,13 +1412,13 @@ async def leaderboard(ctx):
 
             # Çizim işlemleri
             # Sıralama (#1, #2...)
-            draw.text((rank_x, current_y + 15), f"#{rank}", font=font_rank, fill="#FFFFFF") 
+            draw.text((rank_x, current_y + 15), f"#{rank}", font=font_rank, fill="#F4E400") 
             # Avatar (Dairesel)
             bg.paste(avatar_img, (avatar_x, current_y), mask)
             # İsim
-            draw.text((name_x, current_y + 5), user.display_name, font=font_isim, fill="#FFFFFF")
+            draw.text((name_x, current_y + 5), user.display_name, font=font_isim, fill="#171717")
             # Bakiye
-            draw.text((balance_x, current_y + 45), f"{balance} sanal para", font=font_bakiye, fill="#DDDD00")
+            draw.text((balance_x, current_y + 45), f"{balance} sanal para", font=font_bakiye, fill="#171717")
 
             # Sonraki satıra geç
             current_y += y_step
@@ -1448,12 +1448,12 @@ async def monthly_check():
     
     if now_utc.day == 1:
         print("[Task] Aylık sıfırlama zamanı!")
-        
-        ANNOUNCEMENT_CHANNEL_ID = 123456789012345678 # Kendi ID'ni yaz
-        channel = bot.get_channel(ANNOUNCEMENT_CHANNEL_ID)
-        
+
+        LIDERLIK_CHANNEL_ID = 1431998479273562234 # Kendi ID'ni yaz
+        channel = bot.get_channel(LIDERLIK_CHANNEL_ID)
+
         if not channel:
-            print(f"HATA: {ANNOUNCEMENT_CHANNEL_ID} ID'li duyuru kanalı bulunamadı.")
+            print(f"HATA: {LIDERLIK_CHANNEL_ID} ID'li liderlik kanalı bulunamadı.")
             return
 
         # (Kalan kod aynı)
