@@ -1060,72 +1060,97 @@ async def gunluk_error(ctx, error):
     else:
         print(f"Gunluk komutu hatası: {error}") # Diğer hataları konsola yaz
 
-# --- 4. Blackjack Oyunu ---
+# --- 4. Blackjack Oyunu (Emoji Destekli) ---
 
-# Blackjack kartları ve mantığı
-DESTE = {
+KART_DEGERLERI = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
     'J': 10, 'Q': 10, 'K': 10, 'A': 11
 }
 
-def kart_cek(destex):
-    """Desteden rastgele bir kart adı (key) seçer."""
-    kart = random.choice(list(destex.keys()))
-    # Not: Gerçek bir oyunda kartın desteden çıkarılması lazım,
-    # biz basitlik için 4 destelik büyük bir havuz varsayıyoruz
-    # ( BlackjackView içinde 'deck = DESTE.copy() * 4' yapacağız)
-    return kart
+SUITS = ['♠️', '♥️', '♦️', '♣️']
+FACES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+
+# --- GÜNCELLENMİŞ YARDIMCI FONKSİYONLAR ---
 
 def el_hesapla(el: list) -> int:
-    """Bir elin toplam değerini (As kontrolü yaparak) hesaplar."""
-    toplam = sum(DESTE[kart] for kart in el)
-    as_sayisi = el.count('A')
+    """Bir elin toplam değerini (As kontrolü yaparak) hesaplar.
+    'el' artık [('K', '♠️'), ('A', '♦️')] gibi tuple listesidir."""
     
-    # Eğer toplam 21'i geçtiyse ve elde As varsa, As'ı 1 say
+    toplam = 0
+    as_sayisi = 0
+    
+    for kart in el:
+        # kart[0] -> yüz (örn: 'K')
+        # kart[1] -> renk (örn: '♠️')
+        yuz = kart[0]
+        toplam += KART_DEGERLERI[yuz]
+        if yuz == 'A':
+            as_sayisi += 1
+    
+    # As kontrolü (Aynı kaldı)
     while toplam > 21 and as_sayisi > 0:
         toplam -= 10
         as_sayisi -= 1
     return toplam
 
 def kartlari_goster(el: list) -> str:
-    """El listesini "K, 5, A" gibi bir string'e çevirir."""
-    return ", ".join(el)
+    """El listesini "K♠️, 3♦️, A♥️" gibi emojili bir string'e çevirir."""
+    
+    # f"{kart[0]}{kart[1]}" -> 'K' ve '♠️' birleştirir -> "K♠️"
+    return ", ".join(f"{kart[0]}{kart[1]}" for kart in el)
 
-# --- Blackjack Butonlu Arayüzü (View) ---
+
+# --- GÜNCELLENMİŞ Blackjack Butonlu Arayüzü (View) ---
 
 class BlackjackView(discord.ui.View):
     def __init__(self, ctx, bet: int):
-        super().__init__(timeout=60.0) # 60 saniye içinde cevap vermezse zaman aşımı
+        super().__init__(timeout=60.0) 
         self.ctx = ctx
         self.bet = bet
-        self.player_hand = []
-        self.dealer_hand = []
-        self.deck = list(DESTE.keys()) * 4 # 4 destelik bir kart yığını
-        random.shuffle(self.deck) # Desteyi karıştır
-        self.message = None # Oyunu gösteren mesajı saklamak için
+        self.player_hand = [] # Artık [('K', '♠️'), ...] tutacak
+        self.dealer_hand = [] # Artık [('A', '♦️')] tutacak
+        
+        # --- YENİ DESTE OLUŞTURMA MANTIĞI ---
+        # 4 tam deste oluşturup karıştırıyoruz
+        self.deck = []
+        for _ in range(4): # 4 destelik kart yığını
+            for suit in SUITS:
+                for face in FACES:
+                    self.deck.append((face, suit)) # ('K', '♠️') gibi
+        
+        random.shuffle(self.deck) # Gerçek bir deste gibi karıştır
+        # --- BİTTİ ---
+        
+        self.message = None 
         
         # Oyunu başlat: Oyuncuya 2, kurpiyere 1 kart ver
+        # self.deck.pop() -> Desteden bir kart çeker (çıkarır)
         self.player_hand.append(self.deck.pop())
         self.player_hand.append(self.deck.pop())
         self.dealer_hand.append(self.deck.pop())
 
     async def on_timeout(self):
-        """Kullanıcı 60 saniye içinde oynamazsa."""
         await self.message.edit(content="Zaman aşımı! Oyun iptal edildi. Bahis iade edilmedi.", view=None, embed=None)
 
     async def update_message(self, content, game_over=False):
         """Oyun durumunu gösteren mesajı günceller."""
         if game_over:
-            self.stop() # View'ı (butonları) durdurur
+            self.stop() 
             await self.message.edit(content=content, view=None, embed=None)
         else:
-            # Embed'i güncelleyelim
             player_score = el_hesapla(self.player_hand)
+            
+            # --- GÜNCELLENDİ (Kurpiyerin ilk kartını emojili göstermek için) ---
+            dealer_card = self.dealer_hand[0] # ('K', '♠️')
+            dealer_card_formatted = f"{dealer_card[0]}{dealer_card[1]}" # "K♠️"
+            
             embed = discord.Embed(
                 title=f"{self.ctx.author.display_name} Blackjack Oynuyor!",
                 description=f"Bahis: **{self.bet}** sanal para\n\n"
+                            # kartlari_goster() artık emojili gösteriyor
                             f"Senin Elin: {kartlari_goster(self.player_hand)} (Toplam: {player_score})\n"
-                            f"Kurpiyerin Görünen Kartı: {self.dealer_hand[0]}\n\n"
+                            # Kurpiyerin kartını da formatladık
+                            f"Kurpiyerin Görünen Kartı: {dealer_card_formatted}\n\n"
                             f"**Kart mı istiyorsun, yoksa duracak mısın?**",
                 color=discord.Color.blue()
             )
@@ -1136,22 +1161,21 @@ class BlackjackView(discord.ui.View):
         player_score = el_hesapla(self.player_hand)
         
         if player_score > 21:
-            # Oyuncu yandı (Bust)
-            update_balance(self.ctx.author.id, -self.bet) # SQL'e kaydet
+            update_balance(self.ctx.author.id, -self.bet) 
             await self.update_message(
                 f"**Yandın!** (Bust) 💥\n"
+                # kartlari_goster() artık emojili gösteriyor
                 f"Elin: {kartlari_goster(self.player_hand)} (Toplam: {player_score})\n"
                 f"**{self.bet}** sanal para kaybettin.",
                 game_over=True
             )
-            return True # Oyun bitti
+            return True 
         
         if player_score == 21:
-            # Oyuncu Blackjack yaptı, sıra kurpiyerde
             await self.dealer_turn(interaction)
-            return True # Oyun bitti
+            return True 
 
-        return False # Oyun devam ediyor
+        return False 
 
     async def dealer_turn(self, interaction):
         """Sıra kurpiyere (dealer) geçtiğinde."""
@@ -1162,26 +1186,27 @@ class BlackjackView(discord.ui.View):
         while dealer_score < 17:
             self.dealer_hand.append(self.deck.pop())
             dealer_score = el_hesapla(self.dealer_hand)
-
+            
+        # kartlari_goster() fonksiyonu güncellendiği için burası
+        # otomatik olarak kurpiyerin elini de emojili gösterecek.
         result_message = (
             f"Senin Elin: {kartlari_goster(self.player_hand)} (Toplam: {player_score})\n"
             f"Kurpiyerin Eli: {kartlari_goster(self.dealer_hand)} (Toplam: {dealer_score})\n\n"
         )
 
-        winnings = int(self.bet * 1.5) # 1.5 katı kazanç
+        winnings = int(self.bet * 1.5) 
 
         if dealer_score > 21:
             result_message += f"**Kurpiyer Yandı!** Sen kazandın 🎉 **{winnings}** sanal para aldın."
-            update_balance(self.ctx.author.id, winnings) # SQL'e kaydet
+            update_balance(self.ctx.author.id, winnings) 
         elif player_score > dealer_score:
             result_message += f"**Kazandın!** 🎉 **{winnings}** sanal para aldın."
-            update_balance(self.ctx.author.id, winnings) # SQL'e kaydet
+            update_balance(self.ctx.author.id, winnings) 
         elif dealer_score > player_score:
             result_message += f"**Kaybettin...** 😥 **{self.bet}** sanal para kaybettin."
-            update_balance(self.ctx.author.id, -self.bet) # SQL'e kaydet
+            update_balance(self.ctx.author.id, -self.bet) 
         else:
             result_message += "**Berabere!** Bahsin iade edildi."
-            # Bakiye değişmez
 
         await self.update_message(result_message, game_over=True)
 
@@ -1191,36 +1216,29 @@ class BlackjackView(discord.ui.View):
             await interaction.response.send_message("Bu senin oyunun değil!", ephemeral=True)
             return
 
-        # Oyuncuya yeni kart ver
         self.player_hand.append(self.deck.pop())
-        
-        # Mesajı anında yanıtla (Discord'un "thinking..." göstermemesi için)
         await interaction.response.defer() 
 
-        # Oyun durumunu kontrol et (yandı mı? 21 mi?)
         if not await self.check_game_state(interaction):
-            # Oyun devam ediyorsa, güncel durumu göster
-            await self.update_message(content="") # update_message embed'i kendi oluşturuyor
+            await self.update_message(content="") 
 
     @discord.ui.button(label="Dur (Stand)", style=discord.ButtonStyle.red)
     async def stand_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
             await interaction.response.send_message("Bu senin oyunun değil!", ephemeral=True)
             return
-
-        # "Thinking..." göster
-        await interaction.response.defer()
         
-        # Sırayı kurpiyere ver
+        await interaction.response.defer()
         await self.dealer_turn(interaction)
 
-# --- Blackjack Komutu ---
+
+# --- GÜNCELLENMİŞ Blackjack Komutu ---
 
 @bot.command(name="blackjack", aliases=["bj"])
 async def blackjack(ctx, bet: int):
     """Blackjack oynamak için."""
     user_id = ctx.author.id
-    balance = get_balance(user_id) # SQL'den bakiyeyi al
+    balance = get_balance(user_id)
     
     if bet <= 0:
         await ctx.send("Lütfen geçerli bir bahis miktarı gir (0'dan büyük).")
@@ -1230,26 +1248,39 @@ async def blackjack(ctx, bet: int):
         await ctx.send(f"Yetersiz bakiye! 😥 Mevcut bakiyen: **{balance}**")
         return
 
-    # Oyunu başlatan View'ı oluştur
     view = BlackjackView(ctx, bet)
-    
-    # İlk durumu göster
     player_score = el_hesapla(view.player_hand)
+    
+    # --- GÜNCELLENDİ (Kurpiyerin ilk kartını emojili göstermek için) ---
+    dealer_card = view.dealer_hand[0] # ('K', '♠️')
+    dealer_card_formatted = f"{dealer_card[0]}{dealer_card[1]}" # "K♠️"
     
     embed = discord.Embed(
         title=f"{ctx.author.display_name} Blackjack Oynuyor!",
         description=f"Bahis: **{bet}** sanal para\n\n"
+                    # kartlari_goster() artık emojili gösteriyor
                     f"Senin Elin: {kartlari_goster(view.player_hand)} (Toplam: {player_score})\n"
-                    f"Kurpiyerin Görünen Kartı: {view.dealer_hand[0]}\n\n"
+                    f"Kurpiyerin Görünen Kartı: {dealer_card_formatted}\n\n"
                     f"**Kart mı istiyorsun, yoksa duracak mısın?**",
         color=discord.Color.blue()
     )
     
     message = await ctx.send(embed=embed, view=view)
-    view.message = message # View'a hangi mesajı güncelleyeceğini söyle
+    view.message = message 
     
-    # Başlangıçta 21 yaptıysa durumu hemen kontrol et
-    await view.check_game_state(None) # Başlangıçta interaction olmadığı için None yolluyoruz
+    await view.check_game_state(None)
+
+# Blackjack hata yakalayıcı (Bunu da ekle/değiştir)
+@blackjack.error
+async def blackjack_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Unutkanlık! 💸 Bahis miktarını girmeyi unuttun. \n**Örnek kullanım:** `!blackjack 50`")
+    elif isinstance(error, commands.BadArgument):
+        await ctx.send("Hoppa! 😮 Bahis miktarı bir sayı olmalı. \n**Örnek kullanım:** `!blackjack 50`")
+    else:
+        print(f"Blackjack komutunda beklenmedik hata: {error}")
+        await ctx.send("Blackjack oynarken beklenmedik bir hata oluştu. 😥 Yetkiliye haber ver!")
+
 
 
 # --- 5. Görsel Liderlik Tablosu ---
@@ -1266,7 +1297,7 @@ def create_circular_mask(size):
     draw_mask.ellipse((0, 0) + size, fill=255) # Beyaz daire çiz
     return mask
 
-@bot.command(name="liderlik", aliases=["zenginler", "top"])
+@bot.command(name="liderlik", aliases=["zenginler", "top", "leaderboard"])
 async def leaderboard(ctx):
     """Sanal para liderlik tablosunu GÖRSEL olarak oluşturur."""
     
