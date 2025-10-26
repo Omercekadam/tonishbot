@@ -2,17 +2,20 @@
 
 
 #kütüphaneler
+from asyncio import tasks
 import discord
 import os
 import io
 import datetime
 import pytz 
 import random
+import sqlite3
+from datetime import datetime, timezone, time
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from dotenv import load_dotenv
 from discord.ext import commands
-from discord import app_commands # Gerekli değil ama modern yaklaşım için kalsın
-from discord.ui import View, Button, Modal, TextInput, Select # İhtiyacımız olan arayüz elemanları
+from discord import app_commands 
+from discord.ui import View, Button, Modal, TextInput, Select 
 
 
 # .env dosyasındaki bilgileri yükleme
@@ -583,7 +586,7 @@ async def rolbilgi_error(ctx, error):
 #Ticket mesajını kurma
 @bot.command()
 @commands.has_permissions(administrator=True) 
-async def ticketkur(ctx, *, mesaj="Destek almak için aşağıdaki butona tıklayarak bir ticket oluşturabilirsiniz.⬇️"):
+async def ticketkur(ctx, *, mesaj="Destek almak için aşağıdaki butona tıklayarak bir ticket oluşturabilirsiniz."):
     """
     Ticket oluşturma embed'ini ve butonunu bu komutun kullanıldığı kanala gönderir.
     """
@@ -935,6 +938,459 @@ async def zar_error(ctx, error):
     else:
         print(f"Zar komutunda beklenmeyen hata: {error}")
 
+# --- 2. Veritabanı (SQLite) Fonksiyonları ---
+# Bu fonksiyonlar bizim veritabanıyla konuşma dilimiz olacak.
+
+def init_db():
+    """Veritabanını ve 'economy' tablosunu (yoksa) oluşturur."""
+    conn = sqlite3.connect('/data/economy.db')
+    cursor = conn.cursor()
+    
+    # user_id: Kullanıcının Discord ID'si. PRIMARY KEY olması, bir kullanıcıdan
+    #          sadece bir tane olmasını garantiler.
+    # balance: Bakiyesi. DEFAULT 100 olması, yeni eklenen her kullanıcıya
+    #          otomatik 100 para vermemizi sağlar.
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS economy (
+        user_id INTEGER PRIMARY KEY,
+        balance INTEGER DEFAULT 100
+    );
+    """)
+    
+    conn.commit() # Değişiklikleri kaydet
+    conn.close()  # Bağlantıyı kapat
+    print("[DB] Veritabanı ve tablo hazır.")
+
+def ensure_user(user_id: int):
+    """Bir kullanıcının veritabanında kaydı yoksa, onu oluşturur."""
+    conn = sqlite3.connect('/data/economy.db')
+    cursor = conn.cursor()
+    
+    # INSERT OR IGNORE: Ekle, eğer zaten varsa görmezden gel (hata verme).
+    # Bu sayede her komutta "bu kullanıcı var mı?" diye SELECT sormak yerine
+    # doğrudan bunu çağırabiliriz.
+    cursor.execute("INSERT OR IGNORE INTO economy (user_id) VALUES (?)", (user_id,))
+    
+    conn.commit()
+    conn.close()
+
+def get_balance(user_id: int) -> int:
+    """Bir kullanıcının bakiyesini getirir."""
+    ensure_user(user_id) # Kullanıcı yoksa oluşturulsun (100 bakiye ile)
+    
+    conn = sqlite3.connect('/data/economy.db')
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT balance FROM economy WHERE user_id = ?", (user_id,))
+    # fetchone() -> (100,) gibi tek elemanlı bir tuple döndürür
+    result = cursor.fetchone()
+    
+    conn.close()
+    return result[0] # Bize sadece içindeki sayı lazım
+
+def update_balance(user_id: int, amount: int):
+    """Bir kullanıcının bakiyesini 'amount' kadar artırır/azaltır (amount negatifse)."""
+    ensure_user(user_id) # Kullanıcı yoksa oluşturulsun
+    
+    conn = sqlite3.connect('/data/economy.db')
+    cursor = conn.cursor()
+    
+    # SET balance = balance + ?: Mevcut bakiyenin üzerine ekle.
+    # Eğer amount -50 ise, 'balance + (-50)' yani 'balance - 50' olur.
+    cursor.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
+    
+    conn.commit()
+    conn.close()
+
+def get_leaderboard(limit: int = 5):
+    """En zengin 'limit' kadar kullanıcıyı çeker."""
+    conn = sqlite3.connect('/data/economy.db')
+    cursor = conn.cursor()
+    
+    # ORDER BY balance DESC: Bakiyeye göre Azalan (DESC) şekilde sırala.
+    # LIMIT ?: Sadece 'limit' (örn: 5) kadar sonuç getir.
+    cursor.execute("SELECT user_id, balance FROM economy ORDER BY balance DESC LIMIT ?", (limit,))
+    
+    results = cursor.fetchall() # fetchall() -> [(id1, bal1), (id2, bal2), ...]
+    conn.close()
+    return results
+
+def reset_economy():
+    """TÜM kullanıcıların bakiyesini 100'e sıfırlar."""
+    conn = sqlite3.connect('/data/economy.db')
+    cursor = conn.cursor()
+    
+    # WHERE kullanmadığımız için TÜM satırları günceller.
+    cursor.execute("UPDATE economy SET balance = 100")
+    
+    conn.commit()
+    conn.close()
+    print("[DB] Tüm bakiyeler sıfırlandı.")
+
+# --- 3. Ekonomi Komutları ---
+
+@bot.command(name="bakiye", aliases=["para", "cuzdan"])
+async def bakiye(ctx, member: discord.Member = None):
+    """Bir üyenin veya kendinizin bakiyesini gösterir."""
+    if member is None:
+        member = ctx.author
+        
+    balance = get_balance(member.id) # Veritabanından çek
+    await ctx.send(f"{member.display_name} kullanıcısının bakiyesi: **{balance}** sanal para 💸")
+
+@bot.command(name="gunluk")
+@commands.cooldown(1, 86400, commands.BucketType.user) # 1 kullanım / 86400sn (1 gün) / kullanıcı başına
+async def gunluk(ctx):
+    """Kullanıcıya günlük 50 sanal para verir."""
+    user_id = ctx.author.id
+    amount = 50
+    
+    update_balance(user_id, amount) # Veritabanını güncelle
+    new_balance = get_balance(user_id) # Yeni bakiyeyi al
+    
+    await ctx.send(f"Günlük **{amount}** sanal paranı aldın! 💰 Mevcut bakiyen: **{new_balance}**")
+
+@gunluk.error
+async def gunluk_error(ctx, error):
+    """Günlük komutunun bekleme süresi hatasını yakalar."""
+    if isinstance(error, commands.CommandOnCooldown):
+        kalan_saniye = int(error.retry_after)
+        saat = kalan_saniye // 3600
+        dakika = (kalan_saniye % 3600) // 60
+        await ctx.send(f"Bu komutu tekrar kullanmak için **{saat} saat {dakika} dakika** daha beklemelisin.")
+    else:
+        print(f"Gunluk komutu hatası: {error}") # Diğer hataları konsola yaz
+
+# --- 4. Blackjack Oyunu ---
+
+# Blackjack kartları ve mantığı
+DESTE = {
+    '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
+    'J': 10, 'Q': 10, 'K': 10, 'A': 11
+}
+
+def kart_cek(destex):
+    """Desteden rastgele bir kart adı (key) seçer."""
+    kart = random.choice(list(destex.keys()))
+    # Not: Gerçek bir oyunda kartın desteden çıkarılması lazım,
+    # biz basitlik için 4 destelik büyük bir havuz varsayıyoruz
+    # ( BlackjackView içinde 'deck = DESTE.copy() * 4' yapacağız)
+    return kart
+
+def el_hesapla(el: list) -> int:
+    """Bir elin toplam değerini (As kontrolü yaparak) hesaplar."""
+    toplam = sum(DESTE[kart] for kart in el)
+    as_sayisi = el.count('A')
+    
+    # Eğer toplam 21'i geçtiyse ve elde As varsa, As'ı 1 say
+    while toplam > 21 and as_sayisi > 0:
+        toplam -= 10
+        as_sayisi -= 1
+    return toplam
+
+def kartlari_goster(el: list) -> str:
+    """El listesini "K, 5, A" gibi bir string'e çevirir."""
+    return ", ".join(el)
+
+# --- Blackjack Butonlu Arayüzü (View) ---
+
+class BlackjackView(discord.ui.View):
+    def __init__(self, ctx, bet: int):
+        super().__init__(timeout=60.0) # 60 saniye içinde cevap vermezse zaman aşımı
+        self.ctx = ctx
+        self.bet = bet
+        self.player_hand = []
+        self.dealer_hand = []
+        self.deck = list(DESTE.keys()) * 4 # 4 destelik bir kart yığını
+        random.shuffle(self.deck) # Desteyi karıştır
+        self.message = None # Oyunu gösteren mesajı saklamak için
+        
+        # Oyunu başlat: Oyuncuya 2, kurpiyere 1 kart ver
+        self.player_hand.append(self.deck.pop())
+        self.player_hand.append(self.deck.pop())
+        self.dealer_hand.append(self.deck.pop())
+
+    async def on_timeout(self):
+        """Kullanıcı 60 saniye içinde oynamazsa."""
+        await self.message.edit(content="Zaman aşımı! Oyun iptal edildi. Bahis iade edilmedi.", view=None, embed=None)
+
+    async def update_message(self, content, game_over=False):
+        """Oyun durumunu gösteren mesajı günceller."""
+        if game_over:
+            self.stop() # View'ı (butonları) durdurur
+            await self.message.edit(content=content, view=None, embed=None)
+        else:
+            # Embed'i güncelleyelim
+            player_score = el_hesapla(self.player_hand)
+            embed = discord.Embed(
+                title=f"{self.ctx.author.display_name} Blackjack Oynuyor!",
+                description=f"Bahis: **{self.bet}** sanal para\n\n"
+                            f"Senin Elin: {kartlari_goster(self.player_hand)} (Toplam: {player_score})\n"
+                            f"Kurpiyerin Görünen Kartı: {self.dealer_hand[0]}\n\n"
+                            f"**Kart mı istiyorsun, yoksa duracak mısın?**",
+                color=discord.Color.blue()
+            )
+            await self.message.edit(content="", embed=embed, view=self)
+
+    async def check_game_state(self, interaction):
+        """Oyunun durumunu (kazanan, kaybeden, devam) kontrol eder."""
+        player_score = el_hesapla(self.player_hand)
+        
+        if player_score > 21:
+            # Oyuncu yandı (Bust)
+            update_balance(self.ctx.author.id, -self.bet) # SQL'e kaydet
+            await self.update_message(
+                f"**Yandın!** (Bust) 💥\n"
+                f"Elin: {kartlari_goster(self.player_hand)} (Toplam: {player_score})\n"
+                f"**{self.bet}** sanal para kaybettin.",
+                game_over=True
+            )
+            return True # Oyun bitti
+        
+        if player_score == 21:
+            # Oyuncu Blackjack yaptı, sıra kurpiyerde
+            await self.dealer_turn(interaction)
+            return True # Oyun bitti
+
+        return False # Oyun devam ediyor
+
+    async def dealer_turn(self, interaction):
+        """Sıra kurpiyere (dealer) geçtiğinde."""
+        player_score = el_hesapla(self.player_hand)
+        dealer_score = el_hesapla(self.dealer_hand)
+
+        # Kurpiyer 17'ye ulaşana kadar kart çeker
+        while dealer_score < 17:
+            self.dealer_hand.append(self.deck.pop())
+            dealer_score = el_hesapla(self.dealer_hand)
+
+        result_message = (
+            f"Senin Elin: {kartlari_goster(self.player_hand)} (Toplam: {player_score})\n"
+            f"Kurpiyerin Eli: {kartlari_goster(self.dealer_hand)} (Toplam: {dealer_score})\n\n"
+        )
+
+        winnings = int(self.bet * 1.5) # 1.5 katı kazanç
+
+        if dealer_score > 21:
+            result_message += f"**Kurpiyer Yandı!** Sen kazandın 🎉 **{winnings}** sanal para aldın."
+            update_balance(self.ctx.author.id, winnings) # SQL'e kaydet
+        elif player_score > dealer_score:
+            result_message += f"**Kazandın!** 🎉 **{winnings}** sanal para aldın."
+            update_balance(self.ctx.author.id, winnings) # SQL'e kaydet
+        elif dealer_score > player_score:
+            result_message += f"**Kaybettin...** 😥 **{self.bet}** sanal para kaybettin."
+            update_balance(self.ctx.author.id, -self.bet) # SQL'e kaydet
+        else:
+            result_message += "**Berabere!** Bahsin iade edildi."
+            # Bakiye değişmez
+
+        await self.update_message(result_message, game_over=True)
+
+    @discord.ui.button(label="Kart Çek (Hit)", style=discord.ButtonStyle.green)
+    async def hit_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.ctx.author.id:
+            await interaction.response.send_message("Bu senin oyunun değil!", ephemeral=True)
+            return
+
+        # Oyuncuya yeni kart ver
+        self.player_hand.append(self.deck.pop())
+        
+        # Mesajı anında yanıtla (Discord'un "thinking..." göstermemesi için)
+        await interaction.response.defer() 
+
+        # Oyun durumunu kontrol et (yandı mı? 21 mi?)
+        if not await self.check_game_state(interaction):
+            # Oyun devam ediyorsa, güncel durumu göster
+            await self.update_message(content="") # update_message embed'i kendi oluşturuyor
+
+    @discord.ui.button(label="Dur (Stand)", style=discord.ButtonStyle.red)
+    async def stand_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.ctx.author.id:
+            await interaction.response.send_message("Bu senin oyunun değil!", ephemeral=True)
+            return
+
+        # "Thinking..." göster
+        await interaction.response.defer()
+        
+        # Sırayı kurpiyere ver
+        await self.dealer_turn(interaction)
+
+# --- Blackjack Komutu ---
+
+@bot.command(name="blackjack", aliases=["bj"])
+async def blackjack(ctx, bet: int):
+    """Blackjack oynamak için."""
+    user_id = ctx.author.id
+    balance = get_balance(user_id) # SQL'den bakiyeyi al
+    
+    if bet <= 0:
+        await ctx.send("Lütfen geçerli bir bahis miktarı gir (0'dan büyük).")
+        return
+        
+    if balance < bet:
+        await ctx.send(f"Yetersiz bakiye! 😥 Mevcut bakiyen: **{balance}**")
+        return
+
+    # Oyunu başlatan View'ı oluştur
+    view = BlackjackView(ctx, bet)
+    
+    # İlk durumu göster
+    player_score = el_hesapla(view.player_hand)
+    
+    embed = discord.Embed(
+        title=f"{ctx.author.display_name} Blackjack Oynuyor!",
+        description=f"Bahis: **{bet}** sanal para\n\n"
+                    f"Senin Elin: {kartlari_goster(view.player_hand)} (Toplam: {player_score})\n"
+                    f"Kurpiyerin Görünen Kartı: {view.dealer_hand[0]}\n\n"
+                    f"**Kart mı istiyorsun, yoksa duracak mısın?**",
+        color=discord.Color.blue()
+    )
+    
+    message = await ctx.send(embed=embed, view=view)
+    view.message = message # View'a hangi mesajı güncelleyeceğini söyle
+    
+    # Başlangıçta 21 yaptıysa durumu hemen kontrol et
+    await view.check_game_state(None) # Başlangıçta interaction olmadığı için None yolluyoruz
+
+
+# --- 5. Görsel Liderlik Tablosu ---
+
+# Liderlik tablosu için gerekli dosyaların yolları
+LEADERBOARD_BG = "liderlik_bg.png"
+FONT_BOLD = "Roboto-Bold.ttf"
+FONT_REGULAR = "Roboto-Regular.ttf"
+
+def create_circular_mask(size):
+    """Verilen boyutta (örn: 80x80) dairesel bir maske oluşturur."""
+    mask = Image.new("L", size, 0) # "L" modu = 8-bit piksel (siyah-beyaz)
+    draw_mask = ImageDraw.Draw(mask)
+    draw_mask.ellipse((0, 0) + size, fill=255) # Beyaz daire çiz
+    return mask
+
+@bot.command(name="liderlik", aliases=["zenginler", "top"])
+async def leaderboard(ctx):
+    """Sanal para liderlik tablosunu GÖRSEL olarak oluşturur."""
+    
+    loading_msg = await ctx.send("Liderlik tablosu oluşturuluyor... 🎨")
+
+    try:
+        # 1. Veritabanından ilk 5 kişiyi çek
+        # (Bu fonksiyon SQL'den çağırır, senkronize çalışır)
+        leaderboard_data = get_leaderboard(5) 
+
+        if not leaderboard_data:
+            await loading_msg.edit(content="Henüz liderlik tablosunda kimse yok.")
+            return
+
+        # 2. Görsel Şablonunu ve Fontları Yükle
+        bg = Image.open(LEADERBOARD_BG).convert("RGBA")
+        draw = ImageDraw.Draw(bg)
+
+        try:
+            font_isim = ImageFont.truetype(FONT_BOLD, 36)
+            font_bakiye = ImageFont.truetype(FONT_REGULAR, 28)
+            font_rank = ImageFont.truetype(FONT_BOLD, 40)
+        except IOError:
+            await loading_msg.edit(content="Hata: Font dosyaları (Roboto-Bold, Roboto-Regular) bulunamadı.")
+            return
+
+        # 3. Koordinatları Tanımla (KENDİ RESMİNE GÖRE AYARLA!)
+        current_y = 150 
+        y_step = 100 
+        rank_x = 50      
+        avatar_x = 120   
+        name_x = 270     
+        balance_x = 270 # Bakiyeyi ismin altına yazalım
+        avatar_size = (80, 80)
+        
+        mask = create_circular_mask(avatar_size)
+        rank = 1
+
+        # 4. Verileri Resme Çiz
+        for user_id, balance in leaderboard_data:
+            
+            try:
+                user = await bot.fetch_user(int(user_id))
+            except discord.NotFound:
+                continue # Kullanıcı bulunamadıysa atla
+
+            # Avatarı asenkron olarak çek ve işle
+            try:
+                avatar_bytes = await user.display_avatar.read()
+                avatar_img = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
+                avatar_img = avatar_img.resize(avatar_size)
+            except Exception as e:
+                print(f"Avatar okuma hatası {user.id}: {e}")
+                continue 
+
+            # Çizim işlemleri
+            # Sıralama (#1, #2...)
+            draw.text((rank_x, current_y + 15), f"#{rank}", font=font_rank, fill="#FFFFFF") 
+            # Avatar (Dairesel)
+            bg.paste(avatar_img, (avatar_x, current_y), mask)
+            # İsim
+            draw.text((name_x, current_y + 5), user.display_name, font=font_isim, fill="#FFFFFF")
+            # Bakiye
+            draw.text((balance_x, current_y + 45), f"{balance} sanal para", font=font_bakiye, fill="#DDDD00")
+
+            # Sonraki satıra geç
+            current_y += y_step
+            rank += 1
+
+        # 5. Resmi Hafızaya Kaydet
+        final_buffer = io.BytesIO()
+        bg.save(final_buffer, format="PNG")
+        final_buffer.seek(0) # İmleci başa sar
+
+        # 6. Resmi Discord'a Gönder
+        dosya = discord.File(final_buffer, filename="liderlik.png")
+        await ctx.send(file=dosya)
+        await loading_msg.delete()
+
+    except Exception as e:
+        print(f"Liderlik tablosu oluşturma hatası: {e}")
+        await loading_msg.edit(content=f"Liderlik tablosu hatası: {e}")
+
+# HER GÜN UTC (Evrensel Saat) ile gece 00:05'te çalış.
+# Bu, Türkiye saati ile (UTC+3) sabah 03:05'e denk gelir.
+# Ayın 1'i sabah 03:05'te bu kod çalışacak.
+# Her gün UTC 00:05'te (TR saati 03:05) çalışacak şekilde güncellendi
+@tasks.loop(time=time(0, 5, tzinfo=timezone.utc))
+async def monthly_check():
+    now_utc = datetime.now(timezone.utc)
+    
+    if now_utc.day == 1:
+        print("[Task] Aylık sıfırlama zamanı!")
+        
+        ANNOUNCEMENT_CHANNEL_ID = 123456789012345678 # Kendi ID'ni yaz
+        channel = bot.get_channel(ANNOUNCEMENT_CHANNEL_ID)
+        
+        if not channel:
+            print(f"HATA: {ANNOUNCEMENT_CHANNEL_ID} ID'li duyuru kanalı bulunamadı.")
+            return
+
+        # (Kalan kod aynı)
+        leaderboard_data = get_leaderboard(1)
+        if leaderboard_data:
+            winner_id, winner_balance = leaderboard_data[0]
+            try:
+                winner_user = await bot.fetch_user(int(winner_id))
+                await channel.send(
+                    f"🎉 **GEÇEN AYIN SANAL PARA ŞAMPİYONU!** 🎉\n\n"
+                    f"Tebrikler {winner_user.mention}! **{winner_balance}** sanal para ile ayın birincisi oldun!\n"
+                    f"Liderlik tablosu şimdi sıfırlanıyor. Herkese yeni ayda bol şans!"
+                )
+            except Exception as e:
+                await channel.send(f"Geçen ayın şampiyonu duyurulurken bir hata oluştu: {e}")
+        else:
+            await channel.send("Geçen ay kimse sanal para kazanmamış. Liderlik tablosu sıfırlanıyor.")
+        
+        reset_economy()
+    else:
+        print(f"[Task] Günlük kontrol: Ayın {now_utc.day}. günü. Sıfırlama yok.")
+
+
 # ÇALIŞTIR
 
+init_db()  # Veritabanını başlat
 bot.run(TOKEN)
