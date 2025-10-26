@@ -1037,6 +1037,21 @@ async def bakiye(ctx, member: discord.Member = None):
     balance = get_balance(member.id) # Veritabanından çek
     await ctx.send(f"{member.display_name} kullanıcısının bakiyesi: **{balance}** sanal para 💸")
 
+@bot.command
+@commands.has_permissions(administrator=True)
+async def ekonomisifirla(ctx):
+    """Tüm kullanıcıların bakiyesini 100'e sıfırlar. (Yönetici komutu)"""
+    reset_economy()
+    await ctx.send("Tüm kullanıcıların bakiyesi başarıyla 100'e sıfırlandı. 💰")
+
+@bot.command
+@commands.has_permissions(administrator=True)
+async def bakiyeguncelle(ctx, member: discord.Member, amount: int):
+    """Belirtilen kullanıcının bakiyesini 'amount' kadar artırır/azaltır. (Yönetici komutu)"""
+    update_balance(member.id, amount)
+    new_balance = get_balance(member.id)
+    await ctx.send(f"{member.display_name} kullanıcısının yeni bakiyesi: **{new_balance}** sanal para 💸")
+
 @bot.command(name="gunluk")
 @commands.cooldown(1, 86400, commands.BucketType.user) # 1 kullanım / 86400sn (1 gün) / kullanıcı başına
 async def gunluk(ctx):
@@ -1047,6 +1062,7 @@ async def gunluk(ctx):
     update_balance(user_id, amount) # Veritabanını güncelle
     new_balance = get_balance(user_id) # Yeni bakiyeyi al
     
+    print(f"[GUNLUK] {ctx.author} günlük {amount} para aldı. Yeni bakiye: {new_balance}")
     await ctx.send(f"Günlük **{amount}** sanal paranı aldın! 💰 Mevcut bakiyen: **{new_balance}**")
 
 @gunluk.error
