@@ -1251,7 +1251,7 @@ class BlackjackView(discord.ui.View):
             f"Kurpiyerin Eli: {kartlari_goster(self.dealer_hand)} (Toplam: {dealer_score})\n\n"
         )
 
-        winnings = int(self.bet * 1.5) 
+        winnings = int(self.bet * 2) 
 
         if dealer_score > 21:
             result_message += f"**Kurpiyer Yandı!** Sen kazandın 🎉 **{winnings}** sanal para aldın."
