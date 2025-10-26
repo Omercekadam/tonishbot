@@ -1037,20 +1037,61 @@ async def bakiye(ctx, member: discord.Member = None):
     balance = get_balance(member.id) # Veritabanından çek
     await ctx.send(f"{member.display_name} kullanıcısının bakiyesi: **{balance}** sanal para 💸")
 
-@bot.command
-@commands.has_permissions(administrator=True)
+@bot.command(name="ekonomisifirla")
+@commands.has_permissions(administrator=True) # Sadece Yöneticiler
 async def ekonomisifirla(ctx):
     """Tüm kullanıcıların bakiyesini 100'e sıfırlar. (Yönetici komutu)"""
-    reset_economy()
-    await ctx.send("Tüm kullanıcıların bakiyesi başarıyla 100'e sıfırlandı. 💰")
+    
+    # Neden run_in_executor?
+    # reset_economy() senkronize bir veritabanı işlemidir. 
+    # Botun ana döngüsünü (event loop) kilitlememek için
+    # bu işlemi arka planda bir thread'de (iş parçacığı) çalıştırıyoruz.
+    await bot.loop.run_in_executor(None, reset_economy)
+    
+    await ctx.send("✅ Tüm kullanıcıların bakiyesi başarıyla 100'e sıfırlandı.")
 
-@bot.command
-@commands.has_permissions(administrator=True)
+@ekonomisifirla.error
+async def ekonomisifirla_error(ctx, error):
+    """ekonomisifirla komutu için hata yakalayıcı."""
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ Bu komutu kullanmak için 'Yönetici' iznine sahip olmalısın.")
+    else:
+        await ctx.send(f"Bir hata oluştu: {error}")
+        print(f"ekonomisifirla hatası: {error}")
+
+
+@bot.command(name="bakiyeguncelle")
+@commands.has_permissions(administrator=True) # Sadece Yöneticiler
 async def bakiyeguncelle(ctx, member: discord.Member, amount: int):
     """Belirtilen kullanıcının bakiyesini 'amount' kadar artırır/azaltır. (Yönetici komutu)"""
-    update_balance(member.id, amount)
-    new_balance = get_balance(member.id)
-    await ctx.send(f"{member.display_name} kullanıcısının yeni bakiyesi: **{new_balance}** sanal para 💸")
+    
+    # update_balance ve get_balance de veritabanı (I/O) işlemi yapar.
+    # Bu yüzden onları da executor içinde çalıştırmak en güvenlisidir.
+    
+    # Önce güncelle
+    await bot.loop.run_in_executor(None, update_balance, member.id, amount)
+    
+    # Sonra yeni bakiyeyi al
+    # 'get_balance' fonksiyonu 'member.id' argümanı alıyor, bu yüzden
+    # (None, get_balance, member.id) şeklinde çağırıyoruz.
+    new_balance = await bot.loop.run_in_executor(None, get_balance, member.id)
+    
+    await ctx.send(f"✅ {member.display_name} kullanıcısının yeni bakiyesi: **{new_balance}** sanal para 💸")
+
+@bakiyeguncelle.error
+async def bakiyeguncelle_error(ctx, error):
+    """bakiyeguncelle komutu için hata yakalayıcı."""
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ Bu komutu kullanmak için 'Yönetici' iznine sahip olmalısın.")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        # !bakiyeguncelle yazıp bıraktıysa
+        await ctx.send("❌ Kimi ve ne kadar güncelleyeceğini belirtmedin.\n**Kullanım:** `!bakiyeguncelle @kullanıcı 100`")
+    elif isinstance(error, commands.BadArgument):
+        # @kullanıcı veya miktarı yanlış girdiyse
+        await ctx.send("❌ Kullanıcıyı veya miktarı doğru formatta girmedin.\n**Kullanım:** `!bakiyeguncelle @kullanıcı 100`")
+    else:
+        await ctx.send(f"Bir hata oluştu: {error}")
+        print(f"bakiyeguncelle hatası: {error}")
 
 @bot.command(name="gunluk")
 @commands.cooldown(1, 86400, commands.BucketType.user) # 1 kullanım / 86400sn (1 gün) / kullanıcı başına
