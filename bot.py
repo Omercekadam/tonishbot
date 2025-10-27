@@ -926,7 +926,7 @@ async def etkinliksayaci_error(ctx, error):
 
 
 
-@bot.command(name="oyun", aliases=["oyunlar", "bilgi","oyunyardim","oyunbilgi"])
+@bot.command(name="oyun", aliases=["oyunlar","oyunyardim","oyunbilgi"])
 async def oyun(ctx, oyun_adi: str = None):
     """Oyunlar hakkında nasıl oynanır bilgisi verir."""
     
