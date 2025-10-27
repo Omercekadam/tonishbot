@@ -1458,9 +1458,6 @@ async def monthly_check():
 
 SLOT_SEMBOLLERI = ['🍒', '🍑', '🎮', '👑', '⭐', '💎', '7️⃣']
 
-# Olasılık Ağırlıkları:
-# '🍒' (Kiraz) 20 ağırlığında (en yaygın)
-# '7️⃣' (Jackpot) 2 ağırlığında (en nadir)
 # random.choices bu ağırlıklara göre seçim yapacak.
 SLOT_AGIRLIKLARI = [20,   18,   15,   10,   8,    4,    2]
 
@@ -1474,30 +1471,23 @@ SLOT_KAZANCLARI = {
     '💎': 50,
     '7️⃣': 100   # JACKPOT!
 }
-# İsteğe bağlı: 2 kiraz için de bir kazanç ekleyebiliriz
-
 
 @bot.command(name="slot")
 async def slot(ctx, bet: int):
     """Slot makinesinde şansınızı deneyin!"""
     user_id = ctx.author.id
     
-    # --- 2. Bakiye ve Bahis Kontrolü ---
     if bet <= 0:
         await ctx.send("Lütfen geçerli bir bahis miktarı gir (0'dan büyük).")
         return
         
-    balance = get_balance(user_id) # SQL'den bakiyeyi al
-    
+    balance = get_balance(user_id)
     if balance < bet:
         await ctx.send(f"Yetersiz bakiye! 😥 Mevcut bakiyen: **{balance}**")
         return
 
-    # Bahsi peşin olarak al (SQL'den düş)
     update_balance(user_id, -bet)
 
-    # --- 3. Sunum (Heyecan) ---
-    # Önce bir "Dönüyor..." embed'i atalım
     embed = discord.Embed(
         title="Slot Makinesi 🎰",
         description=f"Bahis: **{bet}**\n\n**[ ? | ? | ? ]**\n\nDönüyor...",
@@ -1505,27 +1495,18 @@ async def slot(ctx, bet: int):
     )
     # Mesajı gönder ve 'result_msg' değişkenine kaydet
     result_msg = await ctx.send(embed=embed)
-    
-    # 2 saniye bekle
     await asyncio.sleep(2)
 
-    # --- 4. Çevirme (Spin) Logiği ---
-    # random.choices kullanarak ağırlıklı bir seçim yapıyoruz.
-    # k=3 -> Bize 3 tane sembol seçip bir liste olarak ver.
     spin_sonucu = random.choices(SLOT_SEMBOLLERI, weights=SLOT_AGIRLIKLARI, k=3)
-    
-    # Sonucu güzel bir string'e çevirelim: "[ 🍒 | 💎 | 🍒 ]"
     sonuc_str = f"**[ {spin_sonucu[0]} | {spin_sonucu[1]} | {spin_sonucu[2]} ]**"
 
-    # --- 5. Kazanç Kontrolü ---
     kazanc = 0
     sonuc_mesaji = ""
 
-    # a, b, c = spin_sonucu[0], spin_sonucu[1], spin_sonucu[2]
     s1, s2, s3 = spin_sonucu[0], spin_sonucu[1], spin_sonucu[2]
     
     if s1 == s2 == s3:
-        # 3'ü de aynı (JACKPOT veya normal 3'lü)
+        # 3ü de aynı JACKPOT veya normal 3lü
         kazanan_sembol = s1
         kazanc_carpani = SLOT_KAZANCLARI[kazanan_sembol]
         kazanc = bet * kazanc_carpani
@@ -1550,19 +1531,14 @@ async def slot(ctx, bet: int):
         embed.color = discord.Color.green()
 
     else:
-        # Kaybettin
         sonuc_mesaji = f"Maalesef kaybettin... Bir dahaki sefere! 😥"
         embed.color = discord.Color.dark_grey()
 
-    # --- 6. Veritabanını Güncelle ve Sonucu Göster ---
     if kazanc > 0:
-        # Kazancı SQL'e ekle
-        # (Not: Bahsi zaten düşmüştük, şimdi sadece kazancı ekliyoruz)
-        update_balance(user_id, kazanc)
-        
+        update_balance(user_id, kazanc)       
     yeni_bakiye = get_balance(user_id)
     
-    # Başta gönderdiğimiz embed'i güncelliyoruz
+    # embedi güncelleme
     embed.description = f"Bahis: **{bet}**\n\n{sonuc_str}\n\n{sonuc_mesaji}"
     embed.set_footer(text=f"Yeni bakiyen: {yeni_bakiye}")
     if ctx.author.avatar:
@@ -1570,12 +1546,8 @@ async def slot(ctx, bet: int):
     else:
         embed.set_author(name=f"{ctx.author.display_name}")
     
-
-    # Başta gönderdiğimiz mesajı düzenliyoruz
     await result_msg.edit(embed=embed)
 
-
-# --- 7. Hata Yakalayıcı (Unutmayalım!) ---
 @slot.error
 async def slot_error(ctx, error):
     """Slot komutunda oluşan hataları yakalar."""
