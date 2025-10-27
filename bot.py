@@ -672,7 +672,7 @@ async def bilgi(ctx):
     print(f"{ctx.author} tarafından !bilgi komutu kullanıldı.")
     
     message_content = (
-        "İstanbul Nişantaşı Üniversitesi Dijital Oyun Tasarımı Kulübü yani kısaca **Nishdot**,\n Oyun geliştirmeyi, oyun tasarlamayı ve bu süreçte ekip çalışmasını öğrenmek isteyen herkes için kuruldu. Amacımız; fikirlerinizi hayata geçirebileceğiniz, yeni beceriler kazanabileceğiniz ve oyun dünyasına adım atabileceğiniz bir topluluk oluşturmak. Burada birlikte öğreniyor, üretiyor ve oyunların arkasındaki yaratıcı süreci keşfediyoruz!"
+        "İstanbul Nişantaşı Üniversitesi Dijital Oyun Tasarımı Kulübü yani kısaca **Nishdot**,\n Oyun geliştirmeyi, oyun tasarlamayı ve bu süreçte ekip çalışmasını öğrenmek isteyen herkes için kuruldu. Amacımız; fikirlerinizi hayata geçirebileceğiniz, yeni beceriler kazanabileceğiniz ve oyun dünyasına adım atabileceğiniz bir topluluk oluşturmak. Burada birlikte öğreniyor, üretiyor ve oyunların arkasındaki yaratıcı süreci keşfediyoruz!\nSunucu botumuz tonish ile etkileşime geçmek için '!yardim' yazarak bilgi alabilirsiniz."
     )
 
     try:
@@ -690,9 +690,11 @@ async def yardim(ctx):
     print(f"{ctx.author} tarafından !yardim komutu kullanıldı.")
 
     message_content = (
-        "**Tonishbot Komutları:**\n\n"
-        "**!link:**\n📱Nishdot'un tüm hesaplarına ulaşmak için kullanabileceğiniz komut.\n\n" 
-        "**!yk:**\n👨‍💼👩‍💼Nishdot yönetim kurulunu görüntülemek için kullanabileceğiniz komut.\n"
+        "**Tonishbot Komutları:**\n\n\n"
+        "**!link:**\n📱Nishdot'un tüm hesaplarına ulaşmak için kullanabileceğiniz komut.\n\n"
+        "**!oyun:**\nTonishbot üzerinden oynayıp sunucunun sanal ekonomisine dahil olabileceğiniz eğlenceli oyunları görebileceğiniz komut.\n\n"
+        "**!ekonomi:**Tonishbot üzerinden sunucumuzda oynadığınız oyunlar ile kazandığınız coinleri ve liderlik tablosunu görebileceğiniz komut.\n\n" 
+        "**!yk:**\n👨‍💼👩‍💼Nishdot yönetim kurulunu görüntülemek için kullanabileceğiniz komut.\n\n"
         "**!zar:**\n🎲Sanal zar atmak için kullanabileceğiniz komut.('!zar [yüzey sayısı]')\n\n"
     )
 
