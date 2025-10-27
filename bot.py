@@ -690,10 +690,10 @@ async def yardim(ctx):
     print(f"{ctx.author} tarafından !yardim komutu kullanıldı.")
 
     message_content = (
-        "**Tonishbot Komutları:**\n\n\n"
+        "**Tonishbot Komutları:**\n\n"
         "**!link:**\n📱Nishdot'un tüm hesaplarına ulaşmak için kullanabileceğiniz komut.\n\n"
-        "**!oyun:**\nTonishbot üzerinden oynayıp sunucunun sanal ekonomisine dahil olabileceğiniz eğlenceli oyunları görebileceğiniz komut.\n\n"
-        "**!ekonomi:**Tonishbot üzerinden sunucumuzda oynadığınız oyunlar ile kazandığınız coinleri ve liderlik tablosunu görebileceğiniz komut.\n\n" 
+        "**!oyun:**\n🎰Tonishbot üzerinden oynayıp sunucunun sanal ekonomisine dahil olabileceğiniz eğlenceli oyunları görebileceğiniz komut.\n\n"
+        "**!ekonomi:**\n💸Tonishbot üzerinden sunucumuzda oynadığınız oyunlar ile kazandığınız coinleri ve liderlik tablosunu görebileceğiniz komut.\n\n" 
         "**!yk:**\n👨‍💼👩‍💼Nishdot yönetim kurulunu görüntülemek için kullanabileceğiniz komut.\n\n"
         "**!zar:**\n🎲Sanal zar atmak için kullanabileceğiniz komut.('!zar [yüzey sayısı]')\n\n"
     )
@@ -972,7 +972,7 @@ async def oyun(ctx, oyun_adi: str = None):
         )
         embed.add_field(
             name="Kazanç",
-            value="Kazanırsan bahsin **2 katını** alırsın.\n(50 yatırdın, 100 kazandın, toplam 150 aldın).",
+            value="Kazanırsan bahsin **2 katını** alırsın.\n(50 yatırdın, 100 kazandın, toplam 100 aldın).",
             inline=True
         )
         embed.add_field(
