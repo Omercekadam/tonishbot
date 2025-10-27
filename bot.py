@@ -1174,7 +1174,7 @@ def reset_economy():
 
 #Ekonomi Komutları
 
-@bot.command(name="bakiye", aliases=["tonishcoin","cuzdan","coin","coin"])
+@bot.command(name="bakiye", aliases=["tonishcoin","cuzdan","coin"])
 async def bakiye(ctx, member: discord.Member = None):
     """Bir üyenin veya kendinizin bakiyesini gösterir."""
     if member is None:
