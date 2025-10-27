@@ -705,7 +705,6 @@ async def yardim(ctx):
     except Exception as e:
         print(f"!yk KOMUTU HATASI: {e}")
 
-
 #Yönetim kurulu komutu
 @bot.command()
 async def yk(ctx):
@@ -918,6 +917,150 @@ async def etkinliksayaci_error(ctx, error):
         await ctx.message.delete()
     except:
         pass
+
+
+
+#---OYUNLAR---#
+
+
+
+@bot.command(name="oyun", aliases=["oyunlar", "bilgi","oyunyardim","oyunbilgi"])
+async def oyun(ctx, oyun_adi: str = None):
+    """Oyunlar hakkında nasıl oynanır bilgisi verir."""
+    
+    if oyun_adi is None:
+        embed = discord.Embed(
+            title="Oyun Yardımı 🎲",
+            description="Hangi oyun hakkında bilgi almak istersin?\n\n"
+                        "**`!oyun blackjack`**\n"
+                        "**`!oyun slot`**\n\n"
+                        "Diğer komutlar için:\n"
+                        "**`!bakiye`**: Mevcut paranı gösterir.\n"
+                        "**`!gunluk`**: Günlük 50 sanal paranı alırsın.\n"
+                        "**`!liderlik`**: En zenginleri listeler.",
+            color=discord.Color.blue()
+        )
+        embed.set_footer(text="Bilgi almak için: !oyun [oyun adı]")
+        await ctx.send(embed=embed)
+        return
+    oyun_adi = oyun_adi.lower()
+
+    #Blackjack
+    if oyun_adi == "blackjack" or oyun_adi == "bj":
+        embed = discord.Embed(
+            title="Blackjack (21) Nasıl Oynanır? 🃏",
+            description="Amaç, 21'i geçmeden kurpiyerden (tonish) daha yüksek bir skora ulaşmaktır.",
+            color=discord.Color.light_grey()
+        )
+        embed.add_field(
+            name="Temel Kurallar",
+            value="1. `!blackjack [bahis]` komutuyla oyuna başlarsın.\n"
+                  "2. Sana 2 kart, kurpiyere 1 açık kart verilir.\n"
+                  "3. **Kart Çek (Hit):** 21'e yaklaşmak için yeni bir kart istersin.\n"
+                  "4. **Dur (Stand):** Elinden memnunsan ve sırayı kurpiyere vermek istersen.\n"
+                  "5. 21'i geçersen (Bust) anında kaybedersin.",
+            inline=False
+        )
+        embed.add_field(
+            name="Kart Değerleri",
+            value="• **Sayılar (2-10):** Kendi değerleri (2♠️ = 2 puan).\n"
+                  "• **Vale, Kız, Papaz (J, Q, K):** 10 Puan.\n"
+                  "• **As (A):** 1 veya 11 puan (otomatik ayarlanır).",
+            inline=False
+        )
+        embed.add_field(
+            name="Kazanç",
+            value="Kazanırsan bahsin **2 katını** alırsın.\n(50 yatırdın, 100 kazandın, toplam 150 aldın).",
+            inline=True
+        )
+        embed.add_field(
+            name="Örnek Komut",
+            value="`!blackjack 50`",
+            inline=True
+        )
+        await ctx.send(embed=embed)
+
+    #Slot
+    elif oyun_adi == "slot":
+        embed = discord.Embed(
+            title="Slot Makinesi Nasıl Oynanır? 🎰",
+            description="Tamamen şansa dayalı hızlı bir oyundur. Amaç, 3 sembolü yan yana getirmektir.",
+            color=discord.Color.gold()
+        )
+        embed.add_field(
+            name="Temel Kurallar",
+            value="1. `!slot [bahis]` komutuyla kolu çekersin.\n"
+                  "2. 3 makara döner ve 2 saniye sonra durur.\n"
+                  "3. Gelen kombinasyona göre kazanç tablosu uygulanır.",
+            inline=False
+        )
+        embed.add_field(
+            name="Kazanç Tablosu (3'lü Kombinasyon)",
+            value="• 3 x 7️⃣ (Jackpot!): Bahsin 100 katı\n"
+                  "• 3 x 💎: Bahsin 50 katı\n"
+                  "• 3 x ⭐: Bahsin 25 katı\n"
+                  "• 3 x 🔔: Bahsin 15 katı\n"
+                  "• 3 x 🍋: Bahsin 10 katı\n"
+                  "• 3 x 🍊: Bahsin 8 katı\n"
+                  "• 3 x 🍒: Bahsin 5 katı",
+            inline=False
+        )
+        embed.add_field(
+            name="Teselli İkramiyesi",
+            value="• 2 x 🍒: Bahsin 2 katı\n"
+                  "• 2 x 🍑: Bahsin 2.5 katı",
+            inline=True
+        )
+        embed.add_field(
+            name="Örnek Komut",
+            value="`!slot 50`",
+            inline=True
+        )
+        await ctx.send(embed=embed)
+    else:
+        await ctx.send(f"😥 `{oyun_adi}` adında bir oyun bulamadım. \n"
+                       f"Şu an sadece `!oyun blackjack` ve `!oyun slot` mevcut.")
+
+
+@bot.command(name="ekonomi", aliases=["eco","economi","liderlikbilgi","ekonomibilgi"])
+async def ekonomi(ctx):
+    """Ekonomi sistemiyle ilgili temel komutları listeler."""
+    
+    embed = discord.Embed(
+        title="💰 Ekonomi Komutları 💰",
+        description="Sunucudaki sanal para sistemini yönetmek ve kullanmak için gereken tüm komutlar:",
+        color=discord.Color.green()
+    )
+    
+    embed.add_field(
+        name="!bakiye (veya !para, !cuzdan)",
+        value="Kendi bakiyeni veya etiketlediğin birinin bakiyesini kontrol edersin.\n"
+              "**Kullanım:** `!bakiye` veya `!bakiye @kullanıcı`",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="!gunluk",
+        value="Her 24 saatte bir **50 sanal para** hediye almanı sağlar. \n"
+              "Günün ödülünü almayı unutma!",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="!liderlik (veya !top, !zenginler, !leaderboard)",
+        value="Sunucudaki en zengin 5 kişinin görsel liderlik tablosunu gösterir. \n"
+              "Her ayın 1'inde bu tablo sıfırlanır ve o ayın kazananlarına sürpriz ödüller verilir. ",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="Oyun Oynamak İster misin?",
+        value="Blackjack ve Slot oyunlarının kurallarını öğrenmek için `!oyun` komutunu kullanabilirsin.",
+        inline=False
+    )
+    
+    embed.set_footer(text=f"{ctx.guild.name} Ekonomi Sistemi")
+    await ctx.send(embed=embed)
 
 #zar komutu
 @bot.command()
@@ -1146,7 +1289,6 @@ def kartlari_goster(el: list) -> str:
     # f"{kart[0]}{kart[1]}" -> 'K' ve '♠️' birleştirir -> "K♠️"
     return ", ".join(f"{kart[0]}{kart[1]}" for kart in el)
 
-
 #Blackjack ui
 
 class BlackjackView(discord.ui.View):
@@ -1269,7 +1411,6 @@ class BlackjackView(discord.ui.View):
         await interaction.response.defer()
         await self.dealer_turn(interaction)
 
-
 #Blackjack Komutu
 
 @bot.command(name="blackjack", aliases=["bj"])
@@ -1311,7 +1452,6 @@ async def blackjack(ctx, bet: int):
     
     await view.check_game_state(None)
 
-
 @blackjack.error
 async def blackjack_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
@@ -1321,7 +1461,6 @@ async def blackjack_error(ctx, error):
     else:
         print(f"Blackjack komutunda beklenmedik hata: {error}")
         await ctx.send("Blackjack oynarken beklenmedik bir hata oluştu. 😥 Yetkiliye haber ver!")
-
 
 LEADERBOARD_BG = "liderlik_bg.png"
 FONT_BOLD = "Roboto-Bold.ttf"
@@ -1461,7 +1600,6 @@ SLOT_SEMBOLLERI = ['🍒', '🍑', '🎮', '👑', '⭐', '💎', '7️⃣']
 # random.choices bu ağırlıklara göre seçim yapacak.
 SLOT_AGIRLIKLARI = [20,   18,   15,   10,   8,    4,    2]
 
-# Kazanç Çarpanları (3 tanesi yan yana gelirse)
 SLOT_KAZANCLARI = {
     '🍒': 5,    # 3 kiraz -> Bahsin 5 katı
     '🍑': 8,
@@ -1561,7 +1699,9 @@ async def slot_error(ctx, error):
         print(f"Slot komutunda beklenmedik hata: {error}")
         await ctx.send("Slot makinesi arızalandı. 😥 Yetkiliye haber ver!")
 
+
 # ÇALIŞTIR
+
 
 init_db()  # Veritabanını başlat
 bot.run(TOKEN)
