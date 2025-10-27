@@ -1293,13 +1293,18 @@ async def blackjack(ctx, bet: int):
     dealer_card_formatted = f"{dealer_card[0]}{dealer_card[1]}" # "K♠️"
     
     embed = discord.Embed(
-        title=f"{ctx.author.display_name} Blackjack Oynuyor!",
+        title=f"Blackjack♠️!",
         description=f"Bahis: **{bet}** sanal para\n\n"
                     f"Senin Elin: {kartlari_goster(view.player_hand)} (Toplam: {player_score})\n"
                     f"Kurpiyerin Görünen Kartı: {dealer_card_formatted}\n\n"
                     f"**Kart mı istiyorsun, yoksa duracak mısın?**",
         color=discord.Color.blue()
     )
+    if ctx.author.avatar:
+        embed.set_author(name=f"Oynayan: {ctx.author.display_name}", icon_url=ctx.author.avatar.url)
+    else:
+        embed.set_author(name=f"Oynayan: {ctx.author.display_name}")
+
     
     message = await ctx.send(embed=embed, view=view)
     view.message = message 
