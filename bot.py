@@ -9,6 +9,8 @@ import datetime
 import pytz 
 import random
 import sqlite3
+import asyncio
+import random
 from datetime import datetime, timezone, time
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from dotenv import load_dotenv
@@ -937,8 +939,7 @@ async def zar_error(ctx, error):
     else:
         print(f"Zar komutunda beklenmeyen hata: {error}")
 
-# --- 2. Veritabanı (SQLite) Fonksiyonları ---
-# Bu fonksiyonlar bizim veritabanıyla konuşma dilimiz olacak.
+#Veritabanı Fonks
 
 def init_db():
     """Veritabanını ve 'economy' tablosunu (yoksa) oluşturur."""
@@ -1026,7 +1027,7 @@ def reset_economy():
     conn.close()
     print("[DB] Tüm bakiyeler sıfırlandı.")
 
-# --- 3. Ekonomi Komutları ---
+#Ekonomi Komutları
 
 @bot.command(name="bakiye", aliases=["para", "cuzdan"])
 async def bakiye(ctx, member: discord.Member = None):
@@ -1038,14 +1039,9 @@ async def bakiye(ctx, member: discord.Member = None):
     await ctx.send(f"{member.display_name} kullanıcısının bakiyesi: **{balance}** sanal para 💸")
 
 @bot.command(name="ekonomisifirla")
-@commands.has_permissions(administrator=True) # Sadece Yöneticiler
+@commands.has_permissions(administrator=True) 
 async def ekonomisifirla(ctx):
     """Tüm kullanıcıların bakiyesini 100'e sıfırlar. (Yönetici komutu)"""
-    
-    # Neden run_in_executor?
-    # reset_economy() senkronize bir veritabanı işlemidir. 
-    # Botun ana döngüsünü (event loop) kilitlememek için
-    # bu işlemi arka planda bir thread'de (iş parçacığı) çalıştırıyoruz.
     await bot.loop.run_in_executor(None, reset_economy)
     
     await ctx.send("✅ Tüm kullanıcıların bakiyesi başarıyla 100'e sıfırlandı.")
@@ -1061,19 +1057,13 @@ async def ekonomisifirla_error(ctx, error):
 
 
 @bot.command(name="bakiyeguncelle")
-@commands.has_permissions(administrator=True) # Sadece Yöneticiler
+@commands.has_permissions(administrator=True) 
 async def bakiyeguncelle(ctx, member: discord.Member, amount: int):
     """Belirtilen kullanıcının bakiyesini 'amount' kadar artırır/azaltır. (Yönetici komutu)"""
     
-    # update_balance ve get_balance de veritabanı (I/O) işlemi yapar.
-    # Bu yüzden onları da executor içinde çalıştırmak en güvenlisidir.
-    
     # Önce güncelle
     await bot.loop.run_in_executor(None, update_balance, member.id, amount)
-    
     # Sonra yeni bakiyeyi al
-    # 'get_balance' fonksiyonu 'member.id' argümanı alıyor, bu yüzden
-    # (None, get_balance, member.id) şeklinde çağırıyoruz.
     new_balance = await bot.loop.run_in_executor(None, get_balance, member.id)
     
     await ctx.send(f"✅ {member.display_name} kullanıcısının yeni bakiyesi: **{new_balance}** sanal para 💸")
@@ -1094,14 +1084,14 @@ async def bakiyeguncelle_error(ctx, error):
         print(f"bakiyeguncelle hatası: {error}")
 
 @bot.command(name="gunluk")
-@commands.cooldown(1, 86400, commands.BucketType.user) # 1 kullanım / 86400sn (1 gün) / kullanıcı başına
+@commands.cooldown(1, 86400, commands.BucketType.user) #86400sn 1 gün
 async def gunluk(ctx):
     """Kullanıcıya günlük 50 sanal para verir."""
     user_id = ctx.author.id
     amount = 50
     
-    update_balance(user_id, amount) # Veritabanını güncelle
-    new_balance = get_balance(user_id) # Yeni bakiyeyi al
+    update_balance(user_id, amount) 
+    new_balance = get_balance(user_id) 
     
     print(f"[GUNLUK] {ctx.author} günlük {amount} para aldı. Yeni bakiye: {new_balance}")
     await ctx.send(f"Günlük **{amount}** sanal paranı aldın! 💰 Mevcut bakiyen: **{new_balance}**")
@@ -1117,7 +1107,7 @@ async def gunluk_error(ctx, error):
     else:
         print(f"Gunluk komutu hatası: {error}") # Diğer hataları konsola yaz
 
-# --- 4. Blackjack Oyunu (Emoji Destekli) ---
+#Blackjack
 
 KART_DEGERLERI = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
@@ -1127,7 +1117,7 @@ KART_DEGERLERI = {
 SUITS = ['♠️', '♥️', '♦️', '♣️']
 FACES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 
-# --- GÜNCELLENMİŞ YARDIMCI FONKSİYONLAR ---
+#YARDIMCI FONKS
 
 def el_hesapla(el: list) -> int:
     """Bir elin toplam değerini (As kontrolü yaparak) hesaplar.
@@ -1157,31 +1147,27 @@ def kartlari_goster(el: list) -> str:
     return ", ".join(f"{kart[0]}{kart[1]}" for kart in el)
 
 
-# --- GÜNCELLENMİŞ Blackjack Butonlu Arayüzü (View) ---
+#Blackjack ui
 
 class BlackjackView(discord.ui.View):
     def __init__(self, ctx, bet: int):
         super().__init__(timeout=60.0) 
         self.ctx = ctx
         self.bet = bet
-        self.player_hand = [] # Artık [('K', '♠️'), ...] tutacak
-        self.dealer_hand = [] # Artık [('A', '♦️')] tutacak
+        self.player_hand = [] 
+        self.dealer_hand = [] 
         
-        # --- YENİ DESTE OLUŞTURMA MANTIĞI ---
-        # 4 tam deste oluşturup karıştırıyoruz
+        #DESTE OLUŞTURMA 
         self.deck = []
-        for _ in range(4): # 4 destelik kart yığını
+        for _ in range(4): # 4 deste
             for suit in SUITS:
                 for face in FACES:
-                    self.deck.append((face, suit)) # ('K', '♠️') gibi
+                    self.deck.append((face, suit)) # ('K', '♠️')
         
-        random.shuffle(self.deck) # Gerçek bir deste gibi karıştır
-        # --- BİTTİ ---
+        random.shuffle(self.deck) 
         
         self.message = None 
         
-        # Oyunu başlat: Oyuncuya 2, kurpiyere 1 kart ver
-        # self.deck.pop() -> Desteden bir kart çeker (çıkarır)
         self.player_hand.append(self.deck.pop())
         self.player_hand.append(self.deck.pop())
         self.dealer_hand.append(self.deck.pop())
@@ -1197,16 +1183,14 @@ class BlackjackView(discord.ui.View):
         else:
             player_score = el_hesapla(self.player_hand)
             
-            # --- GÜNCELLENDİ (Kurpiyerin ilk kartını emojili göstermek için) ---
+
             dealer_card = self.dealer_hand[0] # ('K', '♠️')
             dealer_card_formatted = f"{dealer_card[0]}{dealer_card[1]}" # "K♠️"
             
             embed = discord.Embed(
                 title=f"{self.ctx.author.display_name} Blackjack Oynuyor!",
                 description=f"Bahis: **{self.bet}** sanal para\n\n"
-                            # kartlari_goster() artık emojili gösteriyor
                             f"Senin Elin: {kartlari_goster(self.player_hand)} (Toplam: {player_score})\n"
-                            # Kurpiyerin kartını da formatladık
                             f"Kurpiyerin Görünen Kartı: {dealer_card_formatted}\n\n"
                             f"**Kart mı istiyorsun, yoksa duracak mısın?**",
                 color=discord.Color.blue()
@@ -1221,7 +1205,6 @@ class BlackjackView(discord.ui.View):
             update_balance(self.ctx.author.id, -self.bet) 
             await self.update_message(
                 f"**Yandın!** (Bust) 💥\n"
-                # kartlari_goster() artık emojili gösteriyor
                 f"Elin: {kartlari_goster(self.player_hand)} (Toplam: {player_score})\n"
                 f"**{self.bet}** sanal para kaybettin.",
                 game_over=True
@@ -1244,8 +1227,6 @@ class BlackjackView(discord.ui.View):
             self.dealer_hand.append(self.deck.pop())
             dealer_score = el_hesapla(self.dealer_hand)
             
-        # kartlari_goster() fonksiyonu güncellendiği için burası
-        # otomatik olarak kurpiyerin elini de emojili gösterecek.
         result_message = (
             f"Senin Elin: {kartlari_goster(self.player_hand)} (Toplam: {player_score})\n"
             f"Kurpiyerin Eli: {kartlari_goster(self.dealer_hand)} (Toplam: {dealer_score})\n\n"
@@ -1289,7 +1270,7 @@ class BlackjackView(discord.ui.View):
         await self.dealer_turn(interaction)
 
 
-# --- GÜNCELLENMİŞ Blackjack Komutu ---
+#Blackjack Komutu
 
 @bot.command(name="blackjack", aliases=["bj"])
 async def blackjack(ctx, bet: int):
@@ -1308,14 +1289,12 @@ async def blackjack(ctx, bet: int):
     view = BlackjackView(ctx, bet)
     player_score = el_hesapla(view.player_hand)
     
-    # --- GÜNCELLENDİ (Kurpiyerin ilk kartını emojili göstermek için) ---
     dealer_card = view.dealer_hand[0] # ('K', '♠️')
     dealer_card_formatted = f"{dealer_card[0]}{dealer_card[1]}" # "K♠️"
     
     embed = discord.Embed(
         title=f"{ctx.author.display_name} Blackjack Oynuyor!",
         description=f"Bahis: **{bet}** sanal para\n\n"
-                    # kartlari_goster() artık emojili gösteriyor
                     f"Senin Elin: {kartlari_goster(view.player_hand)} (Toplam: {player_score})\n"
                     f"Kurpiyerin Görünen Kartı: {dealer_card_formatted}\n\n"
                     f"**Kart mı istiyorsun, yoksa duracak mısın?**",
@@ -1327,7 +1306,7 @@ async def blackjack(ctx, bet: int):
     
     await view.check_game_state(None)
 
-# Blackjack hata yakalayıcı (Bunu da ekle/değiştir)
+
 @blackjack.error
 async def blackjack_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
@@ -1339,10 +1318,6 @@ async def blackjack_error(ctx, error):
         await ctx.send("Blackjack oynarken beklenmedik bir hata oluştu. 😥 Yetkiliye haber ver!")
 
 
-
-# --- 5. Görsel Liderlik Tablosu ---
-
-# Liderlik tablosu için gerekli dosyaların yolları
 LEADERBOARD_BG = "liderlik_bg.png"
 FONT_BOLD = "Roboto-Bold.ttf"
 FONT_REGULAR = "Roboto-Regular.ttf"
@@ -1438,10 +1413,8 @@ async def leaderboard(ctx):
         print(f"Liderlik tablosu oluşturma hatası: {e}")
         await loading_msg.edit(content=f"Liderlik tablosu hatası: {e}")
 
-# HER GÜN UTC (Evrensel Saat) ile gece 00:05'te çalış.
-# Bu, Türkiye saati ile (UTC+3) sabah 03:05'e denk gelir.
-# Ayın 1'i sabah 03:05'te bu kod çalışacak.
-# Her gün UTC 00:05'te (TR saati 03:05) çalışacak şekilde güncellendi
+# AYLIK SIFIRLAMA 
+# ayın 1i saat 03.05te çalışır
 @tasks.loop(time=time(0, 5, tzinfo=timezone.utc))
 async def monthly_check():
     now_utc = datetime.now(timezone.utc)
@@ -1476,6 +1449,130 @@ async def monthly_check():
     else:
         print(f"[Task] Günlük kontrol: Ayın {now_utc.day}. günü. Sıfırlama yok.")
 
+#SLOT
+
+SLOT_SEMBOLLERI = ['🍒', '🍑', '🎮', '👑', '⭐', '💎', '7️⃣']
+
+# Olasılık Ağırlıkları:
+# '🍒' (Kiraz) 20 ağırlığında (en yaygın)
+# '7️⃣' (Jackpot) 2 ağırlığında (en nadir)
+# random.choices bu ağırlıklara göre seçim yapacak.
+SLOT_AGIRLIKLARI = [20,   18,   15,   10,   8,    4,    2]
+
+# Kazanç Çarpanları (3 tanesi yan yana gelirse)
+SLOT_KAZANCLARI = {
+    '🍒': 5,    # 3 kiraz -> Bahsin 5 katı
+    '🍑': 8,
+    '🎮': 10,
+    '👑': 15,
+    '⭐': 25,
+    '💎': 50,
+    '7️⃣': 100   # JACKPOT!
+}
+# İsteğe bağlı: 2 kiraz için de bir kazanç ekleyebiliriz
+SLOT_KAZANC_IKI_KIRAZ = 2 # 2 kiraz -> Bahsin 2 katı
+
+@bot.command(name="slot")
+async def slot(ctx, bet: int):
+    """Slot makinesinde şansınızı deneyin!"""
+    user_id = ctx.author.id
+    
+    # --- 2. Bakiye ve Bahis Kontrolü ---
+    if bet <= 0:
+        await ctx.send("Lütfen geçerli bir bahis miktarı gir (0'dan büyük).")
+        return
+        
+    balance = get_balance(user_id) # SQL'den bakiyeyi al
+    
+    if balance < bet:
+        await ctx.send(f"Yetersiz bakiye! 😥 Mevcut bakiyen: **{balance}**")
+        return
+
+    # Bahsi peşin olarak al (SQL'den düş)
+    update_balance(user_id, -bet)
+
+    # --- 3. Sunum (Heyecan) ---
+    # Önce bir "Dönüyor..." embed'i atalım
+    embed = discord.Embed(
+        title="Slot Makinesi 🎰",
+        description=f"Bahis: **{bet}**\n\n**[ ? | ? | ? ]**\n\nDönüyor...",
+        color=discord.Color.gold()
+    )
+    # Mesajı gönder ve 'result_msg' değişkenine kaydet
+    result_msg = await ctx.send(embed=embed)
+    
+    # 2 saniye bekle
+    await asyncio.sleep(2)
+
+    # --- 4. Çevirme (Spin) Logiği ---
+    # random.choices kullanarak ağırlıklı bir seçim yapıyoruz.
+    # k=3 -> Bize 3 tane sembol seçip bir liste olarak ver.
+    spin_sonucu = random.choices(SLOT_SEMBOLLERI, weights=SLOT_AGIRLIKLARI, k=3)
+    
+    # Sonucu güzel bir string'e çevirelim: "[ 🍒 | 💎 | 🍒 ]"
+    sonuc_str = f"**[ {spin_sonucu[0]} | {spin_sonucu[1]} | {spin_sonucu[2]} ]**"
+
+    # --- 5. Kazanç Kontrolü ---
+    kazanc = 0
+    sonuc_mesaji = ""
+
+    # a, b, c = spin_sonucu[0], spin_sonucu[1], spin_sonucu[2]
+    s1, s2, s3 = spin_sonucu[0], spin_sonucu[1], spin_sonucu[2]
+    
+    if s1 == s2 == s3:
+        # 3'ü de aynı (JACKPOT veya normal 3'lü)
+        kazanan_sembol = s1
+        kazanc_carpani = SLOT_KAZANCLARI[kazanan_sembol]
+        kazanc = bet * kazanc_carpani
+        
+        if kazanan_sembol == '7️⃣':
+            sonuc_mesaji = f"🎉 **JACKPOT!** 🎉\n**{kazanc}** sanal para kazandın!"
+            embed.color = discord.Color.red()
+        else:
+            sonuc_mesaji = f"Tebrikler! 3'lü ({kazanan_sembol}) yakaladın.\n**{kazanc}** sanal para kazandın!"
+            embed.color = discord.Color.green()
+            
+    elif spin_sonucu.count('🍒') == 2:
+        # Özel durum: İki kiraz (yaygın olduğu için)
+        kazanc_carpani = SLOT_KAZANC_IKI_KIRAZ
+        kazanc = bet * kazanc_carpani
+        sonuc_mesaji = f"İki kiraz! 🍒\n**{kazanc}** sanal para kazandın!"
+        embed.color = discord.Color.green()
+        
+    else:
+        # Kaybettin
+        sonuc_mesaji = "Kaybettin... Bir dahaki sefere! 😥"
+        embed.color = discord.Color.dark_grey()
+
+    # --- 6. Veritabanını Güncelle ve Sonucu Göster ---
+    if kazanc > 0:
+        # Kazancı SQL'e ekle
+        # (Not: Bahsi zaten düşmüştük, şimdi sadece kazancı ekliyoruz)
+        update_balance(user_id, kazanc)
+        
+    yeni_bakiye = get_balance(user_id)
+    
+    # Başta gönderdiğimiz embed'i güncelliyoruz
+    embed.description = f"Bahis: **{bet}**\n\n{sonuc_str}\n\n{sonuc_mesaji}"
+    embed.set_footer(text=f"Yeni bakiyen: {yeni_bakiye}")
+    
+    # Başta gönderdiğimiz mesajı düzenliyoruz
+    await result_msg.edit(embed=embed)
+
+
+# --- 7. Hata Yakalayıcı (Unutmayalım!) ---
+@slot.error
+async def slot_error(ctx, error):
+    """Slot komutunda oluşan hataları yakalar."""
+    if isinstance(error, commands.MissingRequiredArgument):
+        # !slot yazıp bıraktıysa
+        await ctx.send("Unutkanlık! 💸 Bahis miktarını girmeyi unuttun. \n**Örnek kullanım:** `!slot 50`")
+    elif isinstance(error, commands.BadArgument):
+        # !slot elma yazdıysa
+        await ctx.send("Hoppa! 😮 Bahis miktarı bir sayı olmalı. \n**Örnek kullanım:** `!slot 50`")
+    else:
+        print(f"Slot komutunda beklenmedik hata: {error}")
+        await ctx.send("Slot makinesi arızalandı. 😥 Yetkiliye haber ver!")
 
 # ÇALIŞTIR
 
