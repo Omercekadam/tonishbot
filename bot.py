@@ -1494,7 +1494,7 @@ async def slot(ctx, bet: int):
     # --- 3. Sunum (Heyecan) ---
     # Önce bir "Dönüyor..." embed'i atalım
     embed = discord.Embed(
-        title=f"{ctx.author.display_name} Slot Makinesi 🎰 oynuyor.",
+        title=f"{ctx.author} Slot Makinesi 🎰 oynuyor.",
         description=f"Bahis: **{bet}**\n\n**[ ? | ? | ? ]**\n\nDönüyor...",
         color=discord.Color.gold()
     )
