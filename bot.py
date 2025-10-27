@@ -1470,7 +1470,7 @@ SLOT_KAZANCLARI = {
     '7️⃣': 100   # JACKPOT!
 }
 # İsteğe bağlı: 2 kiraz için de bir kazanç ekleyebiliriz
-SLOT_KAZANC_IKI_KIRAZ = 2 # 2 kiraz -> Bahsin 2 katı
+
 
 @bot.command(name="slot")
 async def slot(ctx, bet: int):
@@ -1533,12 +1533,17 @@ async def slot(ctx, bet: int):
             embed.color = discord.Color.green()
             
     elif spin_sonucu.count('🍒') == 2:
-        # Özel durum: İki kiraz (yaygın olduğu için)
-        kazanc_carpani = SLOT_KAZANC_IKI_KIRAZ
+        kazanc_carpani = 2
         kazanc = bet * kazanc_carpani
         sonuc_mesaji = f"İki kiraz! 🍒\n**{kazanc}** sanal para kazandın!"
         embed.color = discord.Color.green()
-        
+    
+    elif spin_sonucu.count('🍑') == 2:
+        kazanc_carpani = 2.5
+        kazanc = bet * kazanc_carpani
+        sonuc_mesaji = f"İki şeftali! 🍑\n**{kazanc}** sanal para kazandın!"
+        embed.color = discord.Color.green()
+
     else:
         # Kaybettin
         sonuc_mesaji = "Kaybettin... Bir dahaki sefere! 😥"
