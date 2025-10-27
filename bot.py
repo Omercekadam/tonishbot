@@ -1494,7 +1494,7 @@ async def slot(ctx, bet: int):
     # --- 3. Sunum (Heyecan) ---
     # Önce bir "Dönüyor..." embed'i atalım
     embed = discord.Embed(
-        title="Slot Makinesi 🎰",
+        title=f"{ctx.author.display_name} Slot Makinesi 🎰 oynuyor.",
         description=f"Bahis: **{bet}**\n\n**[ ? | ? | ? ]**\n\nDönüyor...",
         color=discord.Color.gold()
     )
@@ -1526,27 +1526,27 @@ async def slot(ctx, bet: int):
         kazanc = bet * kazanc_carpani
         
         if kazanan_sembol == '7️⃣':
-            sonuc_mesaji = f"🎉 **JACKPOT!** 🎉\n**{kazanc}** sanal para kazandın!"
+            sonuc_mesaji = f"🎉 **JACKPOT!** 🎉 {ctx.author.display_name} \n**{kazanc}** sanal para kazandın!"
             embed.color = discord.Color.red()
         else:
-            sonuc_mesaji = f"Tebrikler! 3'lü ({kazanan_sembol}) yakaladın.\n**{kazanc}** sanal para kazandın!"
+            sonuc_mesaji = f"Tebrikler! {ctx.author.display_name} 3'lü ({kazanan_sembol}) yakaladın.🥳\n**{kazanc}** sanal para kazandın!"
             embed.color = discord.Color.green()
             
     elif spin_sonucu.count('🍒') == 2:
         kazanc_carpani = 2
         kazanc = bet * kazanc_carpani
-        sonuc_mesaji = f"İki kiraz! 🍒\n**{kazanc}** sanal para kazandın!"
+        sonuc_mesaji = f"İki kiraz! {ctx.author.display_name} 🍒\n**{kazanc}** sanal para kazandın!"
         embed.color = discord.Color.green()
     
     elif spin_sonucu.count('🍑') == 2:
         kazanc_carpani = 2.5
         kazanc = bet * kazanc_carpani
-        sonuc_mesaji = f"İki şeftali! 🍑\n**{kazanc}** sanal para kazandın!"
+        sonuc_mesaji = f"İki şeftali! {ctx.author.display_name} 🍑\n**{kazanc}** sanal para kazandın!"
         embed.color = discord.Color.green()
 
     else:
         # Kaybettin
-        sonuc_mesaji = "Kaybettin... Bir dahaki sefere! 😥"
+        sonuc_mesaji = f"Maaledef kaybettin {ctx.author.display_name}...  Bir dahaki sefere! 😥"
         embed.color = discord.Color.dark_grey()
 
     # --- 6. Veritabanını Güncelle ve Sonucu Göster ---
@@ -1560,6 +1560,10 @@ async def slot(ctx, bet: int):
     # Başta gönderdiğimiz embed'i güncelliyoruz
     embed.description = f"Bahis: **{bet}**\n\n{sonuc_str}\n\n{sonuc_mesaji}"
     embed.set_footer(text=f"Yeni bakiyen: {yeni_bakiye}")
+    if ctx.author.avatar:
+        embed.set_author(name=f"{ctx.author.display_name}", icon_url=ctx.author.avatar.url)
+    else:
+        embed.set_author(name=f"{ctx.author.display_name}")
     
     # Başta gönderdiğimiz mesajı düzenliyoruz
     await result_msg.edit(embed=embed)
