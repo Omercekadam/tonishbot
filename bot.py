@@ -935,8 +935,8 @@ async def oyun(ctx, oyun_adi: str = None):
                         "**`!oyun blackjack`**\n"
                         "**`!oyun slot`**\n\n"
                         "Diğer komutlar için:\n"
-                        "**`!bakiye`**: Mevcut paranı gösterir.\n"
-                        "**`!gunluk`**: Günlük 50 sanal paranı alırsın.\n"
+                        "**`!bakiye`**: Mevcut coin sayını gösterir.\n"
+                        "**`!gunluk`**: Günlük 50 tonish coin alırsın.\n"
                         "**`!liderlik`**: En zenginleri listeler.",
             color=discord.Color.blue()
         )
@@ -1028,12 +1028,12 @@ async def ekonomi(ctx):
     
     embed = discord.Embed(
         title="💰 Ekonomi Komutları 💰",
-        description="Sunucudaki sanal para sistemini yönetmek ve kullanmak için gereken tüm komutlar:",
+        description="Sunucudaki tonish coin sistemini yönetmek ve kullanmak için gereken tüm komutlar:",
         color=discord.Color.green()
     )
     
     embed.add_field(
-        name="!bakiye (veya !para, !cuzdan)",
+        name="!bakiye (veya !tonishcoin, !cuzdan)",
         value="Kendi bakiyeni veya etiketlediğin birinin bakiyesini kontrol edersin.\n"
               "**Kullanım:** `!bakiye` veya `!bakiye @kullanıcı`",
         inline=False
@@ -1041,7 +1041,7 @@ async def ekonomi(ctx):
     
     embed.add_field(
         name="!gunluk",
-        value="Her 24 saatte bir **50 sanal para** hediye almanı sağlar. \n"
+        value="Her 24 saatte bir **50 tonish coin** hediye almanı sağlar. \n"
               "Günün ödülünü almayı unutma!",
         inline=False
     )
@@ -1092,7 +1092,7 @@ def init_db():
     # user_id: Kullanıcının Discord ID'si. PRIMARY KEY olması, bir kullanıcıdan
     #          sadece bir tane olmasını garantiler.
     # balance: Bakiyesi. DEFAULT 100 olması, yeni eklenen her kullanıcıya
-    #          otomatik 100 para vermemizi sağlar.
+    #          otomatik 100 coin vermemizi sağlar.
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS economy (
         user_id INTEGER PRIMARY KEY,
@@ -1172,14 +1172,14 @@ def reset_economy():
 
 #Ekonomi Komutları
 
-@bot.command(name="bakiye", aliases=["para", "cuzdan"])
+@bot.command(name="bakiye", aliases=["tonishcoin","cuzdan","coin","coin"])
 async def bakiye(ctx, member: discord.Member = None):
     """Bir üyenin veya kendinizin bakiyesini gösterir."""
     if member is None:
         member = ctx.author
         
     balance = get_balance(member.id) # Veritabanından çek
-    await ctx.send(f"{member.display_name} kullanıcısının bakiyesi: **{balance}** sanal para 💸")
+    await ctx.send(f"{member.display_name} kullanıcısının bakiyesi: **{balance}** tonish coin 💸")
 
 @bot.command(name="ekonomisifirla")
 @commands.has_permissions(administrator=True) 
@@ -1209,7 +1209,7 @@ async def bakiyeguncelle(ctx, member: discord.Member, amount: int):
     # Sonra yeni bakiyeyi al
     new_balance = await bot.loop.run_in_executor(None, get_balance, member.id)
     
-    await ctx.send(f"✅ {member.display_name} kullanıcısının yeni bakiyesi: **{new_balance}** sanal para 💸")
+    await ctx.send(f"✅ {member.display_name} kullanıcısının yeni bakiyesi: **{new_balance}** tonish coin 💸")
 
 @bakiyeguncelle.error
 async def bakiyeguncelle_error(ctx, error):
@@ -1229,15 +1229,15 @@ async def bakiyeguncelle_error(ctx, error):
 @bot.command(name="gunluk")
 @commands.cooldown(1, 86400, commands.BucketType.user) #86400sn 1 gün
 async def gunluk(ctx):
-    """Kullanıcıya günlük 50 sanal para verir."""
+    """Kullanıcıya günlük 50 tonish coin verir."""
     user_id = ctx.author.id
     amount = 50
     
     update_balance(user_id, amount) 
     new_balance = get_balance(user_id) 
     
-    print(f"[GUNLUK] {ctx.author} günlük {amount} para aldı. Yeni bakiye: {new_balance}")
-    await ctx.send(f"Günlük **{amount}** sanal paranı aldın! 💰 Mevcut bakiyen: **{new_balance}**")
+    print(f"[GUNLUK] {ctx.author} günlük {amount} tonish coin aldı. Yeni bakiye: {new_balance}")
+    await ctx.send(f"Günlük **{amount}** tonish coin aldın! 💰 Mevcut bakiyen: **{new_balance}**")
 
 @gunluk.error
 async def gunluk_error(ctx, error):
@@ -1331,7 +1331,7 @@ class BlackjackView(discord.ui.View):
             
             embed = discord.Embed(
                 title=f"{self.ctx.author.display_name} Blackjack Oynuyor!",
-                description=f"Bahis: **{self.bet}** sanal para\n\n"
+                description=f"Bahis: **{self.bet}** tonish coin\n\n"
                             f"Senin Elin: {kartlari_goster(self.player_hand)} (Toplam: {player_score})\n"
                             f"Kurpiyerin Görünen Kartı: {dealer_card_formatted}\n\n"
                             f"**Kart mı istiyorsun, yoksa duracak mısın?**",
@@ -1348,7 +1348,7 @@ class BlackjackView(discord.ui.View):
             await self.update_message(
                 f"**Yandın!** (Bust) 💥\n"
                 f"Elin: {kartlari_goster(self.player_hand)} (Toplam: {player_score})\n"
-                f"**{self.bet}** sanal para kaybettin.",
+                f"**{self.bet}** tonish coin kaybettin.",
                 game_over=True
             )
             return True 
@@ -1377,13 +1377,13 @@ class BlackjackView(discord.ui.View):
         winnings = int(self.bet * 2) 
 
         if dealer_score > 21:
-            result_message += f"**Kurpiyer Yandı!** Sen kazandın 🎉 **{winnings}** sanal para aldın."
+            result_message += f"**Kurpiyer Yandı!** Sen kazandın 🎉 **{winnings}** tonish coin aldın."
             update_balance(self.ctx.author.id, winnings) 
         elif player_score > dealer_score:
-            result_message += f"**Kazandın!** 🎉 **{winnings}** sanal para aldın."
+            result_message += f"**Kazandın!** 🎉 **{winnings}** tonish coin aldın."
             update_balance(self.ctx.author.id, winnings) 
         elif dealer_score > player_score:
-            result_message += f"**Kaybettin...** 😥 **{self.bet}** sanal para kaybettin."
+            result_message += f"**Kaybettin...** 😥 **{self.bet}** tonish coin kaybettin."
             update_balance(self.ctx.author.id, -self.bet) 
         else:
             result_message += "**Berabere!** Bahsin iade edildi."
@@ -1435,7 +1435,7 @@ async def blackjack(ctx, bet: int):
     
     embed = discord.Embed(
         title=f"Blackjack♠️!",
-        description=f"Bahis: **{bet}** sanal para\n\n"
+        description=f"Bahis: **{bet}** tonish coin\n\n"
                     f"Senin Elin: {kartlari_goster(view.player_hand)} (Toplam: {player_score})\n"
                     f"Kurpiyerin Görünen Kartı: {dealer_card_formatted}\n\n"
                     f"**Kart mı istiyorsun, yoksa duracak mısın?**",
@@ -1475,7 +1475,7 @@ def create_circular_mask(size):
 
 @bot.command(name="liderlik", aliases=["zenginler", "top", "leaderboard"])
 async def leaderboard(ctx):
-    """Sanal para liderlik tablosunu GÖRSEL olarak oluşturur."""
+    """tonish coin liderlik tablosunu GÖRSEL olarak oluşturur."""
     
     loading_msg = await ctx.send("Liderlik tablosu oluşturuluyor... 🎨")
 
@@ -1537,7 +1537,7 @@ async def leaderboard(ctx):
             # İsim
             draw.text((name_x, current_y + 5), user.display_name, font=font_isim, fill="#171717")
             # Bakiye
-            draw.text((balance_x, current_y + 45), f"{balance} sanal para", font=font_bakiye, fill="#171717")
+            draw.text((balance_x, current_y + 45), f"{balance} tonish coin", font=font_bakiye, fill="#171717")
 
             # Sonraki satıra geç
             current_y += y_step
@@ -1580,14 +1580,14 @@ async def monthly_check():
             try:
                 winner_user = await bot.fetch_user(int(winner_id))
                 await channel.send(
-                    f"🎉 **GEÇEN AYIN SANAL PARA ŞAMPİYONU!** 🎉\n\n"
-                    f"Tebrikler {winner_user.mention}! **{winner_balance}** sanal para ile ayın birincisi oldun!\n"
+                    f"🎉 **GEÇEN AYIN TONISH COIN ŞAMPİYONU!** 🎉\n\n"
+                    f"Tebrikler {winner_user.mention}! **{winner_balance}** tonish coin ile ayın birincisi oldun!\n"
                     f"Liderlik tablosu şimdi sıfırlanıyor. Herkese yeni ayda bol şans!"
                 )
             except Exception as e:
                 await channel.send(f"Geçen ayın şampiyonu duyurulurken bir hata oluştu: {e}")
         else:
-            await channel.send("Geçen ay kimse sanal para kazanmamış. Liderlik tablosu sıfırlanıyor.")
+            await channel.send("Geçen ay kimse tonish coin kazanmamış. Liderlik tablosu sıfırlanıyor.")
         
         reset_economy()
     else:
@@ -1650,22 +1650,22 @@ async def slot(ctx, bet: int):
         kazanc = bet * kazanc_carpani
         
         if kazanan_sembol == '7️⃣':
-            sonuc_mesaji = f"🎉 **JACKPOT!** 🎉 \n**{kazanc}** sanal para kazandın!"
+            sonuc_mesaji = f"🎉 **JACKPOT!** 🎉 \n**{kazanc}** tonish coin kazandın!"
             embed.color = discord.Color.red()
         else:
-            sonuc_mesaji = f"Tebrikler! 3'lü ({kazanan_sembol}) yakaladın.🥳\n**{kazanc}** sanal para kazandın!"
+            sonuc_mesaji = f"Tebrikler! 3'lü ({kazanan_sembol}) yakaladın.🥳\n**{kazanc}** tonish coin kazandın!"
             embed.color = discord.Color.green()
             
     elif spin_sonucu.count('🍒') == 2:
         kazanc_carpani = 2
         kazanc = bet * kazanc_carpani
-        sonuc_mesaji = f"İki kiraz! 🍒\n**{kazanc}** sanal para kazandın!"
+        sonuc_mesaji = f"İki kiraz! 🍒\n**{kazanc}** tonish coin kazandın!"
         embed.color = discord.Color.green()
     
     elif spin_sonucu.count('🍑') == 2:
         kazanc_carpani = 2.5
         kazanc = bet * kazanc_carpani
-        sonuc_mesaji = f"İki şeftali! 🍑\n**{kazanc}** sanal para kazandın!"
+        sonuc_mesaji = f"İki şeftali! 🍑\n**{kazanc}** tonish coin kazandın!"
         embed.color = discord.Color.green()
 
     else:
