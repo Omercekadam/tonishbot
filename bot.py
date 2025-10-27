@@ -1494,7 +1494,7 @@ async def slot(ctx, bet: int):
     # --- 3. Sunum (Heyecan) ---
     # Önce bir "Dönüyor..." embed'i atalım
     embed = discord.Embed(
-        title=f"{ctx.author} Slot Makinesi 🎰 oynuyor.",
+        title="Slot Makinesi 🎰",
         description=f"Bahis: **{bet}**\n\n**[ ? | ? | ? ]**\n\nDönüyor...",
         color=discord.Color.gold()
     )
@@ -1546,7 +1546,7 @@ async def slot(ctx, bet: int):
 
     else:
         # Kaybettin
-        sonuc_mesaji = f"Maaledef kaybettin {ctx.author.display_name}...  Bir dahaki sefere! 😥"
+        sonuc_mesaji = f"Maalesef kaybettin {ctx.author.display_name}... \nBir dahaki sefere! 😥"
         embed.color = discord.Color.dark_grey()
 
     # --- 6. Veritabanını Güncelle ve Sonucu Göster ---
@@ -1560,11 +1560,7 @@ async def slot(ctx, bet: int):
     # Başta gönderdiğimiz embed'i güncelliyoruz
     embed.description = f"Bahis: **{bet}**\n\n{sonuc_str}\n\n{sonuc_mesaji}"
     embed.set_footer(text=f"Yeni bakiyen: {yeni_bakiye}")
-    if ctx.author.avatar:
-        embed.set_author(name=f"{ctx.author.display_name}", icon_url=ctx.author.avatar.url)
-    else:
-        embed.set_author(name=f"{ctx.author.display_name}")
-    
+
     # Başta gönderdiğimiz mesajı düzenliyoruz
     await result_msg.edit(embed=embed)
 
