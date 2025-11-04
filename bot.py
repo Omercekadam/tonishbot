@@ -852,7 +852,7 @@ async def etkinliksayaci(ctx, tarih_str: str, saat_str: str, etkinlik_adi: str, 
         turkey_tz = pytz.timezone("Europe/Istanbul")
 
         dt_str = f"{tarih_str} {saat_str}"
-        local_dt = datetime.datetime.strptime(dt_str, "%d.%m.%Y %H:%M")
+        local_dt = datetime.strptime(dt_str, "%d.%m.%Y %H:%M")
         
         aware_dt = turkey_tz.localize(local_dt)
         
