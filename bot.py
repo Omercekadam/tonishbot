@@ -611,7 +611,7 @@ async def ticketkur(ctx, *, mesaj="Destek almak için aşağıdaki butona tıkla
         embed.add_field(name="Gizlilik", value="Kanalı sadece siz ve yetkililer görebilir.", inline=True)
         embed.add_field(name="Kurallar", value="Lütfen sabırlı olun ve gereksiz ticket açmayın.", inline=True)
 
-        embed.set_image(url="https://i.imgur.com/example.png") # <-- KENDİ BANNER LİNKİNİ GİR imgur.coma yükle
+        embed.set_image(url="https://imgur.com/a/ppqV0TF") # <-- KENDİ BANNER LİNKİNİ GİR imgur.coma yükle
 
         embed.set_footer(text="TonishBot Ticket Sistemi", icon_url=bot.user.avatar.url if bot.user.avatar else None)
         embed.timestamp = discord.utils.utcnow() 
