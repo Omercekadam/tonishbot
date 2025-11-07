@@ -591,6 +591,8 @@ async def ticketkur(ctx, *, mesaj="Destek almak için aşağıdaki butona tıkla
     """
     Ticket oluşturma embed'ini ve butonunu bu komutun kullanıldığı kanala gönderir.
     """
+    ticket_image = "ticket_image.jpg"
+    file = discord.File(f"./{ticket_image}", filename=ticket_image)
     try:
         embed = discord.Embed(
             title="📩 Destek Talebi Oluşturun", 
@@ -611,12 +613,12 @@ async def ticketkur(ctx, *, mesaj="Destek almak için aşağıdaki butona tıkla
         embed.add_field(name="Gizlilik", value="Kanalı sadece siz ve yetkililer görebilir.", inline=True)
         embed.add_field(name="Kurallar", value="Lütfen sabırlı olun ve gereksiz ticket açmayın.", inline=True)
 
-        embed.set_image(url="https://i.imgur.com/X6lkDdv.jpeg") # <-- KENDİ BANNER LİNKİNİ GİR imgur.coma yükle
+        embed.set_image(url=f"attachment://{ticket_image}")
 
         embed.set_footer(text="TonishBot Ticket Sistemi", icon_url=bot.user.avatar.url if bot.user.avatar else None)
         embed.timestamp = discord.utils.utcnow() 
 
-        await ctx.send(embed=embed, view=TicketCreationView())
+        await ctx.send(embed=embed, view=TicketCreationView(), file=file)
         print(f"{ctx.author} tarafından '{ctx.channel.name}' kanalına ticket kurulum mesajı gönderildi.")
         
         await ctx.message.delete()
