@@ -1997,5 +1997,17 @@ async def slot_error(ctx, error):
 # ÇALIŞTIR
 
 
-init_db()  # Veritabanını başlat
-bot.run(TOKEN)
+if __name__ == "__main__":
+    
+    # 1. ADIM: Veritabanını ve tabloları hazırla
+    # BU SATIRIN BURADA OLMASI ŞART!
+    init_db() 
+    
+    # 2. ADIM: Token'ı al
+    TOKEN = os.environ.get('DISCORD_TOKEN') 
+
+    if TOKEN is None:
+        print("HATA: 'DISCORD_TOKEN' ortam değişkeni bulunamadı.")
+    else:
+        # 3. ADIM: Botu çalıştır
+        bot.run(TOKEN)
