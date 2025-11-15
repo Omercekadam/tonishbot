@@ -87,8 +87,11 @@ sistem_talimati = (
     "Cevaplarını çok uzun tutmamaya çalış, sohbeti akıcı tut."
 )
 
-ai_model = genai.GenerativeModel('gemini-1.0-pro', 
-                                 system_instruction=sistem_talimati)
+ai_model = genai.GenerativeModel(
+    'gemini-pro',
+    system_instruction=sistem_talimati,
+    api_version="v1" 
+)
 
 def init_db():
     """Veritabanını ve TÜM tabloları (yoksa) oluşturur."""
