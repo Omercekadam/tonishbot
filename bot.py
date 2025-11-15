@@ -936,7 +936,7 @@ async def oyun(ctx, oyun_adi: str = None):
             title="Oyun Yardımı 🎲",
             description="Hangi oyun hakkında bilgi almak istersin?\n\n"
                         "**`!oyun blackjack`**\n"
-                        "**`!oyun slot`**\n\n"
+                        "**`!oyun slot`**\n"
                         "**`!oyun zar`**\n\n"
                         "Diğer komutlar için:\n"
                         "**`!bakiye`**: Mevcut coin sayını gösterir.\n"
