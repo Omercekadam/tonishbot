@@ -87,7 +87,7 @@ sistem_talimati = (
     "Cevaplarını çok uzun tutmamaya çalış, sohbeti akıcı tut."
 )
 
-ai_model = genai.GenerativeModel('gemini-pro', 
+ai_model = genai.GenerativeModel('gemini-1.0-pro', 
                                  system_instruction=sistem_talimati)
 
 def init_db():
