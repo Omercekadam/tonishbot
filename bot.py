@@ -41,6 +41,13 @@ EVENT_COUNTER_CHANNEL_ID = int(os.getenv('EVENT_COUNTER_CHANNEL_ID'))
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 
+#INTENTS
+intents = discord.Intents.default()
+intents.members = True 
+intents.message_content = True
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+
 #YAPAY ZEKA
 
 # --- VERİTABANI YOLU (BUNU KENDİNE GÖRE AYARLA) ---
@@ -297,11 +304,7 @@ ROLE_OPTIONS = {
     },
 }
 
-#INTENTS
-intents = discord.Intents.default()
-intents.members = True 
-intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+
 
 
 #KAYIT FORMU
