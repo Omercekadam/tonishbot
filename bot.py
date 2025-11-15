@@ -697,7 +697,6 @@ async def yardim(ctx):
         "**!oyun:**\n🎰Tonishbot üzerinden oynayıp sunucunun sanal ekonomisine dahil olabileceğiniz eğlenceli oyunları görebileceğiniz komut.\n\n"
         "**!ekonomi:**\n💸Tonishbot üzerinden sunucumuzda oynadığınız oyunlar ile kazandığınız coinleri ve liderlik tablosunu görebileceğiniz komut.\n\n" 
         "**!yk:**\n👨‍💼👩‍💼Nishdot yönetim kurulunu görüntülemek için kullanabileceğiniz komut.\n\n"
-        "**!zar:**\n🎲Sanal zar atmak için kullanabileceğiniz komut.('!zar [yüzey sayısı]')\n\n"
     )
 
     try:
@@ -938,6 +937,7 @@ async def oyun(ctx, oyun_adi: str = None):
             description="Hangi oyun hakkında bilgi almak istersin?\n\n"
                         "**`!oyun blackjack`**\n"
                         "**`!oyun slot`**\n\n"
+                        "**`!oyun zar`**\n\n"
                         "Diğer komutlar için:\n"
                         "**`!bakiye`**: Mevcut coin sayını gösterir.\n"
                         "**`!gunluk`**: Günlük 50 tonish coin alırsın.\n"
@@ -984,6 +984,27 @@ async def oyun(ctx, oyun_adi: str = None):
         )
         await ctx.send(embed=embed)
 
+    elif oyun_adi == "zar":
+        embed = discord.Embed(
+            title="Zar Nasıl Oynanır? 🎲",
+            description="Belirtilen yüzey sayısına sahip bir zar atarsın ve sonucu görürsün.",
+            color=discord.Color.dark_grey()
+        )
+        embed.add_field(
+            name="Temel Kurallar",
+            value="1. `!zar [yüzey sayısı]` komutuyla zarı atarsın.\n"
+                  "2. Zar rastgele 1 ile belirtilen yüzey sayısı arasında bir değer alır.\n"
+                  "3. Sonuç anında gösterilir.",
+            inline=False
+        )
+        embed.add_field(
+            name="Örnek Komutlar",
+            value="• `!zar` (6 yüzeyli zar atar)\n"
+                  "• `!zar 20` (20 yüzeyli zar atar)",
+            inline=False
+        )
+        await ctx.send(embed=embed)
+
     #Slot
     elif oyun_adi == "slot":
         embed = discord.Embed(
@@ -1012,7 +1033,7 @@ async def oyun(ctx, oyun_adi: str = None):
         embed.add_field(
             name="Teselli İkramiyesi",
             value="• 2 x 🍒: Bahsin 2 katı\n"
-                  "• 2 x 🍑: Bahsin 2.5 katı",
+                  "• 2 x 🍑: Bahsin 2 katı",
             inline=True
         )
         embed.add_field(
@@ -1024,6 +1045,7 @@ async def oyun(ctx, oyun_adi: str = None):
     else:
         await ctx.send(f"😥 `{oyun_adi}` adında bir oyun bulamadım. \n"
                        f"Şu an sadece `!oyun blackjack` ve `!oyun slot` mevcut.")
+        
 
 
 @bot.command(name="ekonomi", aliases=["eco","economi","liderlikbilgi","ekonomibilgi"])
