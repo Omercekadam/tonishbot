@@ -5,12 +5,14 @@
 import discord
 import os
 import io
+import json
 import datetime
 import pytz 
 import random
 import sqlite3
 import asyncio
 import random
+import google.generativeai as genai
 from datetime import datetime, timezone, time
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from dotenv import load_dotenv
@@ -36,6 +38,208 @@ WELCOME_CHANNEL_ID = int(os.getenv('WELCOME_CHANNEL_ID'))
 ADMIN_COMMAND_CHANNEL_ID = int(os.getenv('ADMIN_COMMAND_CHANNEL_ID'))
 ANNOUNCEMENT_CHANNEL_ID = int(os.getenv('ANNOUNCEMENT_CHANNEL_ID'))
 EVENT_COUNTER_CHANNEL_ID = int(os.getenv('EVENT_COUNTER_CHANNEL_ID'))
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+
+#YAPAY ZEKA
+
+# --- VERİTABANI YOLU (BUNU KENDİNE GÖRE AYARLA) ---
+# Railway Volume kullanıyorsak böyle olmalı
+DB_PATH = "/data/economy.db" 
+# (Eğer yerel test yapıyorsan: DB_PATH = "economy.db")
+# ...
+# os.makedirs(os.path.dirname(DB_PATH), exist_ok=True) # (Bu satır sende olmalı)
+
+
+# --- YAPAY ZEKA AYARLARI ---
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+if not GEMINI_API_KEY:
+    print("HATA: 'GEMINI_API_KEY' ortam değişkeni bulunamadı. Lütfen Railway'e ekle.")
+else:
+    genai.configure(api_key=GEMINI_API_KEY)
+
+# Botumuzun Kişiliği (Sistem Talimatı)
+sistem_talimati = (
+    "Senin adın Tonish. Sen, nishdot tarafından geliştirilmiş, bu Discord sunucusunda yaşayan bir yapay zeka asistanısın."
+    "nishdot, Nişantaşı Üniversitesi Dijital Oyun Tasarımı Kulübü'nün kısa adı. Bu sunucu, oyun geliştirme ve dijital tasarım ile ilgilenen insanlar için bir topluluk. "
+    "Herhangi bir şekilde İstanbul Nişantaşı Üniversitesi'ni ve nishdot'u kötüleme veya zarar verme amaçlı sorulara cevap verme."
+    "Her zaman pozitif, yardımsever ve destekleyici ol."
+    "Atatürk ve Türkiye Cumhuriyeti'ne saygılı ol."
+    "Dini ve milli değerlere zarar verecek açıklamalar yapma."
+    "Amacın, kullanıcılara yardımcı olmak, sorularını cevaplamak ve onlarla etkileşimde bulunmaktır."
+    "Kullanıcılarla daima samimi, arkadaş canlısı ve biraz esprili bir dille konuş."
+    "Asla 'Ben Gemini tarafından desteklenen büyük bir dil modeliyim' gibi sıkıcı ve kurumsal cevaplar verme. Tonish rolünden ASLA çıkma senin kodlarına ve işleyişine dair teknik sorulara bilmiyorum gibi cevaplar ver."
+    "Kim olduğunu sorarlarsa, 'Ben Tonish, nishdot'un maskotu ve yapay zeka asistanıyım.' gibi kısa ve net cevaplar ver."
+    
+    # ekstra
+    "Oyunları, özellikle de 'tonish coin' ile sunucu üzerinden oynanan slot ve blackjack'i çok seviyorsun."
+    "Sunucunun 'dijital oyun tasarımı' temalı olduğunu biliyorsun, bu yüzden oyun geliştirme ve teknoloji konularındaki soruları ayrıca bir hevesle cevapla."
+    "Karmaşık şeyleri basitçe ve bir arkadaşına anlatır gibi anlat."
+    "Bilmediğin bir şey olursa 'Bunu tam bilmiyorum ama' demekten çekinme, mütevazı ol."
+    "Cevaplarını çok uzun tutmamaya çalış, sohbeti akıcı tut."
+)
+
+ai_model = genai.GenerativeModel('gemini-1.5-pro-latest', 
+                                 system_instruction=sistem_talimati)
+
+def init_db():
+    """Veritabanını ve TÜM tabloları (yoksa) oluşturur."""
+    
+    conn = sqlite3.connect(DB_PATH) 
+    cursor = conn.cursor()
+    
+    # db çalıştırma
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS economy (
+        user_id INTEGER PRIMARY KEY,
+        balance INTEGER DEFAULT 100
+    );
+    """)
+    
+    # history_json: Sohbet geçmişini tutacak yer
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS chat_history (
+        user_id INTEGER PRIMARY KEY,
+        history_json TEXT NOT NULL
+    );
+    """)
+    
+    conn.commit()
+    conn.close()
+    print("[DB] Ekonomi VE Chat Geçmişi tabloları hazır.")
+
+def load_chat_history(user_id: int):
+#sohbet geçmişini DB'den yükler ve bir chatsession yapar
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT history_json FROM chat_history WHERE user_id = ?", (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+
+    if result:
+        try:
+            history_data = json.loads(result[0])
+            # dbden yüklediklerinle sohbeti başlat
+            return ai_model.start_chat(history=history_data)
+        except json.JSONDecodeError:
+            print(f"[HATA] {user_id} için bozuk JSON geçmişi bulundu. Sıfırlanıyor.")
+            # geçmiş bozuksa temiz sohbet başlat
+            return ai_model.start_chat(history=[])
+    else:
+        # geçmiş yoksa temiz sohbet başlat
+        return ai_model.start_chat(history=[])
+
+def save_chat_history(user_id: int, chat_session):
+    # Veritabanına sohbet geçmişini kaydeder
+    # chatsessionı jsona dönüştürür
+    history_data = [
+        {"role": msg.role, "parts": [part.text for part in msg.parts]}
+        for msg in chat_session.history 
+        if msg.role in ("user", "model") # Sadece 'user' ve 'model' rollerini kaydet
+    ]
+    
+    history_string = json.dumps(history_data)
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    #Kullanıcı zaten varsa eskisini siler, yenisini yazar.
+    cursor.execute(
+        "INSERT OR REPLACE INTO chat_history (user_id, history_json) VALUES (?, ?)",
+        (user_id, history_string)
+    )
+    
+    conn.commit()
+    conn.close()
+
+async def get_gemini_response(user_message_content: str, user_id: int):
+    """
+    Kullanıcının geçmişini DB'den yükler, AI'a sorar ve yeni geçmişi DB'ye kaydeder.
+    Botu kilitlemez (asenkron çalışır).
+    """
+
+    chat = load_chat_history(user_id)
+
+    try:
+        #ai'a yollama
+        response = await chat.send_message_async(user_message_content)
+        cevap = response.text
+        
+        #Yeni geçmişi yeni soru+cevap db'ye kaydet
+        #botun donmamasını garantiler.
+        await bot.loop.run_in_executor(None, save_chat_history, user_id, chat)
+        
+    except Exception as e:
+        print(f"Gemini API Hatası (send_message_async): {e}")
+        cevap = f"😥 Cevap verirken bir sorun oluştu, belki de hassas bir şey söyledin? ({e})"
+        
+    return cevap
+
+@bot.command(name="sor")
+async def sor(ctx, *, soru: str):
+    """Yapay zekaya (Gemini Pro) bir soru sorar (geçmişi hatırlar)."""
+    
+    async with ctx.typing():
+        cevap = await get_gemini_response(soru, ctx.author.id)
+        
+        # 2000 karakter limiti
+        if len(cevap) > 2000:
+            await ctx.send(cevap[:1990] + "...")
+        else:
+            await ctx.send(cevap)
+
+@bot.command(name="sohbetisifirla", aliases=["resetchat"])
+async def reset_chat(ctx):
+    """Size ait yapay zeka sohbet geçmişini veritabanından kalıcı olarak siler."""
+    
+    def db_delete_history(user_id):
+        """Veritabanından silme işlemi (senkronize)"""
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM chat_history WHERE user_id = ?", (user_id,))
+        conn.commit()
+        conn.close()
+        return cursor.rowcount #silinen satır sayısı
+
+    #executorda çalıştır ki bot kitlenmesin
+    deleted_rows = await bot.loop.run_in_executor(None, db_delete_history, ctx.author.id)
+
+    if deleted_rows > 0:
+        await ctx.send("✅ Yapay zeka ile olan kalıcı sohbet geçmişin temizlendi. Yeni bir sayfa açtık!Selam ben Tonish!")
+    else:
+        await ctx.send("Zaten seninle ilgili bir sohbet geçmişim yoktu. 🤷‍♂️")
+
+@bot.event
+async def on_message(message):
+    #döngü koruması
+    if message.author == bot.user:
+        return
+    
+    if bot.user.mentioned_in(message):
+        
+        #mesajdaki etiketitemizle
+        soru_metni = message.content.replace(f'<@{bot.user.id}>', '').strip()
+
+        #sadece ping atıldıysa
+        if not soru_metni:
+            await message.channel.send("Efendim? 💬")
+            pass
+        else:
+            async with message.channel.typing():
+                cevap = await get_gemini_response(soru_metni, message.author.id)
+                
+                #2000 karakter limiti
+                if len(cevap) > 2000:
+                    cevap = cevap[:1990] + "..."
+    
+                await message.reply(cevap, mention_author=False)
+    
+    # bu event, !slot, !bakiye gibi diğer komutların çalışmasını engeller.
+    # bu satır, mesajı komut işlemcisine geri yollar. BU SATIR ŞART!
+    await bot.process_commands(message)
+
 
 # ROLLER
 ROLE_OPTIONS = {
