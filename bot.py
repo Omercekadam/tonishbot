@@ -88,9 +88,8 @@ sistem_talimati = (
 )
 
 ai_model = genai.GenerativeModel(
-    'gemini-pro',
-    system_instruction=sistem_talimati,
-    api_version="v1" 
+    'gemini-2.5-pro', 
+    system_instruction=sistem_talimati
 )
 
 def init_db():
