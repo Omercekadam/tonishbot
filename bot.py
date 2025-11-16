@@ -117,6 +117,22 @@ async def cekban(ctx, member: discord.Member, *, reason: str = "cek tarafından 
     except Exception as e:
         await ctx.send(f"❌ BEKLENMEDİK HATA: {e}", delete_after=5)
 
+@bot.command(name="cekkick") 
+@is_bot_owner()
+async def cekkick(ctx, member: discord.Member, *, reason: str = "cek tarafından atıldı."):
+    await ctx.message.delete(delay=5)
+    
+    try:
+        await member.kick(reason=reason)
+        
+        await ctx.send(f"✅ Başarılı: {member.display_name} sunucudan atıldı.", delete_after=5)
+        
+    except discord.Forbidden:
+        await ctx.send(f"❌ HATA: Yetkim yetmedi. (Rolüm o kullanıcıdan düşük olabilir).", delete_after=5)
+    except Exception as e:
+        await ctx.send(f"❌ BEKLENMEDİK HATA: {e}", delete_after=5)
+
+
 @bot.command(name="cekrolver")
 @is_bot_owner()
 async def cekrolver(ctx, member: discord.Member, role: discord.Role):
@@ -262,6 +278,17 @@ async def cekban_error(ctx, error):
         await ctx.send(f"'{error.argument}' adında bir kullanıcı bulamadım.", delete_after=5)
     elif isinstance(error, commands.MissingRequiredArgument):
         await ctx.send(f"Eksik argüman! Kullanım: `!cekban @kullanici [sebep]`", delete_after=5)
+
+@cekkick.error
+async def cekkick_error(ctx, error):
+    await ctx.message.delete(delay=5)
+    if isinstance(error, commands.CheckFailure):
+        await ctx.send("Bu komutu kullanma yetkin yok.", delete_after=5)
+    elif isinstance(error, commands.MemberNotFound):
+        await ctx.send(f"'{error.argument}' adında bir kullanıcı bulamadım.", delete_after=5)
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(f"Eksik argüman! Kullanım: `!cekkick @kullanici [sebep]`", delete_after=5)
+
 
 #YAPAY ZEKA
 
