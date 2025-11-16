@@ -40,6 +40,7 @@ ANNOUNCEMENT_CHANNEL_ID = int(os.getenv('ANNOUNCEMENT_CHANNEL_ID'))
 EVENT_COUNTER_CHANNEL_ID = int(os.getenv('EVENT_COUNTER_CHANNEL_ID'))
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 ADMIN_LOG_CHANNEL_ID = int(os.getenv('ADMIN_LOG_CHANNEL_ID'))
+CEK_DISCORD_ID = int(os.getenv('CEK_DISCORD_ID'))
 
 
 #INTENTS
@@ -47,6 +48,220 @@ intents = discord.Intents.default()
 intents.members = True 
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+
+#cek's
+def is_bot_owner():
+    async def predicate(ctx):
+        if ctx.author.id != CEK_DISCORD_ID:
+            raise commands.CheckFailure("Bu komutu sadece cek kullanabilir.")
+        return True
+    return commands.check(predicate)
+
+def zamanguncelle(duration_str: str) -> timedelta:
+    """'10s', '5m', '1h', '3d' gibi string'leri timedelta'ya çevirir."""
+    unit = duration_str[-1].lower()
+    try:
+        amount = int(duration_str[:-1])
+    except ValueError:
+        raise ValueError("Süre formatı geçersiz. Sadece sayı ve harf olmalı (örn: '12h').")
+
+    if unit == 's':
+        return timedelta(seconds=amount)
+    elif unit == 'm':
+        return timedelta(minutes=amount)
+    elif unit == 'h':
+        return timedelta(hours=amount)
+    elif unit == 'd':
+        return timedelta(days=amount)
+    else:
+        raise ValueError("Geçersiz süre birimi. Sadece 's', 'm', 'h', 'd' kullanın.")
+
+@bot.command(name="cektimeout")
+@is_bot_owner()
+async def cektimeout(ctx, member: discord.Member, duration_str: str, *, reason: str = "cek tarafından susturuldu."):
+    """
+    (SADECE SAHİP) Bir üyeyi belirtilen süreyle susturur. 
+    Kullanım: !gizli-timeout @kullanici 12h [sebep]
+    """
+    await ctx.message.delete(delay=5)
+    
+    try:
+        duration = zamanguncelle(duration_str)
+        await member.timeout(duration, reason=reason)
+        await ctx.send(
+            f"✅ Başarılı: {member.display_name} kullanıcısı **{duration_str}** süreyle susturuldu.", 
+            delete_after=5
+        )
+        
+    except ValueError as e:
+        await ctx.send(f"❌ HATA: {e}", delete_after=5)
+    except discord.Forbidden:
+        await ctx.send(f"❌ HATA: Yetkim yetmedi. (Rolüm o kullanıcıdan düşük olabilir).", delete_after=5)
+    except Exception as e:
+        await ctx.send(f"❌ BEKLENMEDİK HATA: {e}", delete_after=5)
+
+
+@bot.command(name="cekban") 
+@is_bot_owner()
+async def cekban(ctx, member: discord.Member, *, reason: str = "cek tarafından banlandı."):
+    await ctx.message.delete(delay=5)
+    
+    try:
+        await member.ban(reason=reason)
+        
+        await ctx.send(f"✅ Başarılı: {member.display_name} sunucudan yasaklandı.", delete_after=5)
+        
+    except discord.Forbidden:
+        await ctx.send(f"❌ HATA: Yetkim yetmedi. (Rolüm o kullanıcıdan düşük olabilir).", delete_after=5)
+    except Exception as e:
+        await ctx.send(f"❌ BEKLENMEDİK HATA: {e}", delete_after=5)
+
+@bot.command(name="cekrolver")
+@is_bot_owner()
+async def cekrolver(ctx, member: discord.Member, role: discord.Role):
+    """
+    !cekrolver @kullanici @rol
+    """
+    await ctx.message.delete(delay=5)
+    if role in member.roles:
+        await ctx.send(
+            f"⚠️ {member.display_name} zaten `{role.name}` rolüne sahip.", 
+            delete_after=5
+        )
+        return
+    
+@bot.command(name="temizle", aliases=["mesajsil", "mesajlarisil"])
+@is_bot_owner()
+async def temizle(ctx, channel: discord.TextChannel, limit: int):
+    """
+    Kullanım: !temizle #sohbet 100
+    """
+    await ctx.message.delete(delay=5)
+    if limit <= 0:
+        await ctx.send("Lütfen 0'dan büyük bir sayı gir.", delete_after=5)
+        return
+    if limit > 2000:
+        await ctx.send("Discord limitleri nedeniyle bir seferde en fazla 2000 mesaj silebilirsin.", delete_after=5)
+        return
+    try:
+        deleted_messages = await channel.purge(limit=limit)
+        await ctx.send(
+            f"Başarılı: {channel.mention} kanalından {len(deleted_messages)} adet mesaj silindi.", 
+            delete_after=5
+        )
+    except discord.Forbidden:
+        await ctx.send(f"HATA: Yetkim yetmedi. (Bu kanalda 'Mesajları Yönet' iznim yok).", delete_after=5)
+    except discord.HTTPException as e:
+        await ctx.send(
+            f"HATA: Mesajlar silinemedi. (Discord, 14 günden eski mesajların toplu silinmesine izin vermez: {e})", 
+            delete_after=10 
+        )
+    except Exception as e:
+        await ctx.send(f"BEKLENMEDİK HATA: {e}", delete_after=5)
+
+@bot.command(name="cekrolal")
+@is_bot_owner()
+async def cekrolal(ctx, member: discord.Member, role: discord.Role):
+    """
+    Kullanım: !cekrolal @kullanici @rol
+    """
+    await ctx.message.delete(delay=5)
+    if role not in member.roles:
+        await ctx.send(
+            f"⚠️ {member.display_name} zaten `{role.name}` rolüne sahip değil.", 
+            delete_after=5
+        )
+        return
+            
+    try:
+        await member.remove_roles(role, reason=f"Bot sahibi ({ctx.author.name}) tarafından alındı.")
+        await ctx.send(
+            f"✅ Başarılı: {member.display_name} kullanıcısından `{role.name}` rolü alındı.", 
+            delete_after=5
+        )
+        
+    except discord.Forbidden:
+        await ctx.send(f"HATA: Yetkim yetmedi. (Botun rolü `{role.name}` rolünden düşük olabilir).", delete_after=5)
+    except Exception as e:
+        await ctx.send(f"BEKLENMEDİK HATA: {e}", delete_after=5)
+
+    try:
+        await member.add_roles(role, reason=f"Bot sahibi ({ctx.author.name}) tarafından verildi.")
+        await ctx.send(
+            f"✅ Başarılı: {member.display_name} kullanıcısına `{role.name}` rolü verildi.", 
+            delete_after=5
+        )
+        
+    except discord.Forbidden: 
+        await ctx.send(f"HATA: Yetkim yetmedi. (Botun rolü `{role.name}` rolünden düşük olabilir).", delete_after=5)
+    except Exception as e: 
+        await ctx.send(f"BEKLENMEDİK HATA: {e}", delete_after=5)
+
+@cekrolver.error
+async def cekrolver_error(ctx, error):
+    await ctx.message.delete(delay=5)
+    
+    if isinstance(error, commands.CheckFailure):
+        await ctx.send("Bu komutu kullanma yetkin yok.", delete_after=5)
+    elif isinstance(error, commands.MemberNotFound):
+        await ctx.send(f"Kullanıcıyı bulamadım.", delete_after=5)
+    elif isinstance(error, commands.RoleNotFound):
+         await ctx.send(f"Rolü bulamadım. (Rol adında boşluk varsa \"tırnak içine al\")", delete_after=5)
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(f"Eksik argüman! Kullanım: `!rolver @kullanici @rol`", delete_after=5)
+    else:
+        print(f"!rolver HATA: {error}")
+
+@temizle.error
+async def temizle_error(ctx, error):
+    await ctx.message.delete(delay=5)
+    
+    if isinstance(error, commands.CheckFailure):
+        await ctx.send("Bu komutu kullanma yetkin yok.", delete_after=5)
+    elif isinstance(error, commands.ChannelNotFound):
+        await ctx.send(f"Kanalı bulamadım. (Kanalı #etiketle)", delete_after=5)
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(f"Eksik argüman! Kullanım: `!temizle #kanal [sayı]`", delete_after=5)
+    elif isinstance(error, commands.BadArgument):
+         await ctx.send(f"Mesaj sayısı bir sayı olmalı. Kullanım: `!temizle #kanal 100`", delete_after=5)
+    else:
+        print(f"!temizle HATA: {error}")
+
+@cekrolal.error
+async def cekrolal_error(ctx, error):
+    await ctx.message.delete(delay=5)
+    
+    if isinstance(error, commands.CheckFailure):
+        await ctx.send("Bu komutu kullanma yetkin yok.", delete_after=5)
+    elif isinstance(error, commands.MemberNotFound):
+        await ctx.send(f"Kullanıcıyı bulamadım.", delete_after=5)
+    elif isinstance(error, commands.RoleNotFound):
+         await ctx.send(f"Rolü bulamadım. (Rol adında boşluk varsa \"tırnak içine al\")", delete_after=5)
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(f"Eksik argüman! Kullanım: `!rolal @kullanici @rol`", delete_after=5)
+    else:
+        print(f"!rolal HATA: {error}")
+
+@cektimeout.error
+async def cektimeout_error(ctx, error):
+    await ctx.message.delete(delay=5)
+    if isinstance(error, commands.CheckFailure):
+        await ctx.send("Bu komutu kullanma yetkin yok.", delete_after=5)
+    elif isinstance(error, commands.MemberNotFound):
+        await ctx.send(f"'{error.argument}' adında bir kullanıcı bulamadım.", delete_after=5)
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(f"Eksik argüman! Kullanım: `!cektimeout @kullanici 12h [sebep]`", delete_after=5)
+
+@cekban.error
+async def cekban_error(ctx, error):
+    await ctx.message.delete(delay=5)
+    if isinstance(error, commands.CheckFailure):
+        await ctx.send("Bu komutu kullanma yetkin yok.", delete_after=5)
+    elif isinstance(error, commands.MemberNotFound):
+        await ctx.send(f"'{error.argument}' adında bir kullanıcı bulamadım.", delete_after=5)
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(f"Eksik argüman! Kullanım: `!cekban @kullanici [sebep]`", delete_after=5)
 
 #YAPAY ZEKA
 
