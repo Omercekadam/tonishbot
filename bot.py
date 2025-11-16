@@ -645,8 +645,8 @@ async def on_member_join(member: discord.Member):
                 print(f"{member.name} için karşılama görseli oluşturuluyor...")
                 
                 background = Image.open("background.png").convert("RGBA")
-                font_user = ImageFont.truetype("welcomefont.otf", 50)
-                font_welcome = ImageFont.truetype("welcomefont.otf", 25)
+                font_user = ImageFont.truetype("welcomefont.otf", 60)
+                font_welcome = ImageFont.truetype("welcomefont.otf", 30)
                 
                
                 if member.avatar:
@@ -668,17 +668,17 @@ async def on_member_join(member: discord.Member):
                 draw_surface = background.copy()
                 
                 
-                avatar_pos = (70, 55)
+                avatar_pos = (65, 55)
                 draw_surface.paste(avatar_image, avatar_pos, mask)
                 
                 draw = ImageDraw.Draw(draw_surface)
                 text_user = member.display_name
-                user_pos = (210, 60)
-                draw.text(user_pos, text_user, font=font_user, fill="#000000") 
+                user_pos = (220, 70)
+                draw.text(user_pos, text_user, font=font_user, fill="#0F0F0F") 
                 
                 text_welcome = f"{member.guild.name}'a Hoşgeldin"
-                welcome_pos = (210, 125)
-                draw.text(welcome_pos, text_welcome, font=font_welcome, fill="#505050") 
+                welcome_pos = (220, 145)
+                draw.text(welcome_pos, text_welcome, font=font_welcome, fill="#EEEEEE") 
 
 
                 final_buffer = io.BytesIO()
