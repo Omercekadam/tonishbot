@@ -56,13 +56,19 @@ AI_COOLDOWN_SANIYE = 10
 
 DB_PATH = "/data/economy.db" 
 
+# --- KATMAN 2 (KÜFÜR FİLTRESİ) BAŞLATMA ---
+
+# 1. Varsayılan (İngilizce) listeyi yükle.
+profanity.load_censor_words()
+print("[Filtre] Varsayılan (İngilizce) küfür filtresi yüklendi.")
+
+# 2. Şimdi, o listenin ÜZERİNE bizim Türkçe listeyi EKLE.
 try:
-    # (Bu dosyanın bot.py ile aynı klasörde olması gerekir)
-    profanity.load_censor_words_from_file("turkce_kufurler.txt")
-    print("[Filtre] Türkçe küfür filtresi yüklendi.")
+    # Dikkat: 'load_...' değil, 'add_...'
+    profanity.add_censor_words_from_file("turkce_kufurler.txt")
+    print("[Filtre] Türkçe küfür listesi de eklendi.")
 except FileNotFoundError:
-    print("[HATA] 'turkce_kufurler.txt' dosyası bulunamadı. Sadece İngilizce filtre aktif.")
-    # (Sadece İngilizce ile devam eder, çökmez)
+    print("[HATA] 'turkce_kufurler.txt' dosyası bulunamadı. Filtre SADECE İngilizce çalışacak.")
 except Exception as e:
     print(f"[HATA] Küfür filtresi yüklenemedi: {e}")
 
