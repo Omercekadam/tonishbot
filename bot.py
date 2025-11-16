@@ -645,8 +645,8 @@ async def on_member_join(member: discord.Member):
                 print(f"{member.name} için karşılama görseli oluşturuluyor...")
                 
                 background = Image.open("background.png").convert("RGBA")
-                font_user = ImageFont.truetype("welcomefont.ttf", 50)
-                font_welcome = ImageFont.truetype("welcomefont.ttf", 25)
+                font_user = ImageFont.truetype("welcomefont.otf", 50)
+                font_welcome = ImageFont.truetype("welcomefont.otf", 25)
                 
                
                 if member.avatar:
