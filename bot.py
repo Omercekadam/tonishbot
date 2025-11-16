@@ -676,7 +676,7 @@ async def on_member_join(member: discord.Member):
                 user_pos = (220, 70)
                 draw.text(user_pos, text_user, font=font_user, fill="#0F0F0F") 
                 
-                text_welcome = f"{member.guild.name}'a Hoşgeldin"
+                text_welcome = f"{member.guild.name}'a Hosgeldin"
                 welcome_pos = (220, 145)
                 draw.text(welcome_pos, text_welcome, font=font_welcome, fill="#EEEEEE") 
 
