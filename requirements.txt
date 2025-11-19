@@ -4,3 +4,4 @@ Pillow
 pytz
 google-generativeai==0.7.1
 better-profanity
+aiosqlite
