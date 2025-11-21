@@ -75,12 +75,20 @@ class General(commands.Cog):
         message_content = (
             "**Nishdot Yönetim Kurulu:**\n\n\n"
             "**Başkan:** \nYurdakul Efe Arıkan\n\n"
-            "**Başkan Vekili:** \nMehmet Boran Bulut\n\n"
             "**Başkan Yardımcısı:** \nÖmer Soysal\n\n"
-            "**Genel Sekreter:** \nEbru Karademir\n\n"
-            "**Organizasyon Sorumlusu:** \nOğulcan Danişment\n\n"
-            "**Sosyal Medya Koordinatörü:** \nFeyzanur Sarı\n\n"
-            "**Etkinlik Sorumlusu:** \nKaan Mersin\nKerem Çetin\n\n"
+            "**Yönetim Kurulu:** \nYurdakul Efe Arıkan\nÖmer Soysal\nMehmet Boran Bulut\nEbru Karademir\nOğulcan Danişment\n"
+            "**Organizasyon Koordinatörü:** \nİbrahim Ata Gültekin\n\n"
+            "**Workshop Sorumlusu:** \nYağmur Güven\nYaren Er\n\n"
+            "**Game Jam Sorumlusu:** \nOğulcan Danişment\n\n"
+            "**Etkinlik Görevlileri:** \nBahadır Bildiren\nSudenaz Çolak\nYusuf Çınar Üstal\n\n"
+            "**Dış İlişkiler Koordinatörü:** \nKerem Çetin\n\n"
+            "**Sponsorluk Sorumlusu:** \nKaan Mersin\n\n"
+            "**İletişim Sorumlusu:** \nÖmer Çelik\n\n"
+            "**Sosyal Medya Koordinatörü:** \nMuhammed Alper Kuvar\n\n"
+            "**Tasarımcı - Editör:** \nBeyzanur Boduroğlu\nYusuf Dervent\n\n"
+            "**Kameraman:** \nFeyzanur Sarı\n\n"
+            "**İçerik Üreticisi:** \nEbru Karademir\n\n"
+            "**Discord Sorumlusu:** \nYusuf Dervent\n\n"
         )
         await ctx.send(message_content)
 
