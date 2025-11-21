@@ -122,3 +122,55 @@ sudo systemctl restart tonishbot
 ```
 
 Bu işlem botu son sürüme günceller ve yeniden başlatır.
+
+## 7. Sunucu Yönetim Komutları
+
+Botunuzu yönetmek için aşağıdaki komutları kullanabilirsiniz:
+
+### Botu Durdurma
+
+```bash
+sudo systemctl stop tonishbot
+```
+
+### Botu Başlatma
+
+```bash
+sudo systemctl start tonishbot
+```
+
+### Botu Yeniden Başlatma
+
+```bash
+sudo systemctl restart tonishbot
+```
+
+### Durum Kontrolü
+
+Botun çalışıp çalışmadığını ve son logları görmek için:
+
+```bash
+sudo systemctl status tonishbot
+```
+
+### Logları Canlı İzleme
+
+Botun loglarını anlık olarak takip etmek için:
+
+```bash
+journalctl -u tonishbot -f
+```
+
+### Otomatik Başlatmayı Açma/Kapatma
+
+Sunucu yeniden başladığında botun otomatik açılmasını **kapatmak** için:
+
+```bash
+sudo systemctl disable tonishbot
+```
+
+Tekrar **açmak** için:
+
+```bash
+sudo systemctl enable tonishbot
+```
