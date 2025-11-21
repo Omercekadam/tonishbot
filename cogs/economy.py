@@ -17,6 +17,12 @@ KART_DEGERLERI = {
 SUITS = ['♠️', '♥️', '♦️', '♣️']
 FACES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 
+SLOT_SEMBOLLERI = ['🍒', '🍑', '7️⃣', '🍋', '🍇', '🔔', '💎']
+SLOT_AGIRLIKLARI = [30, 30, 5, 20, 20, 10, 2]
+SLOT_KAZANCLARI = {
+    '🍒': 2, '🍑': 2, '7️⃣': 100, '🍋': 3, '🍇': 3, '🔔': 10, '💎': 50
+}
+
 def el_hesapla(el: list) -> int:
     """Bir elin toplam değerini (As kontrolü yaparak) hesaplar."""
     toplam = 0
@@ -153,40 +159,110 @@ class BlackjackView(discord.ui.View):
         await self.dealer_turn(interaction)
 
 class SlotView(discord.ui.View):
-    """Slot oyunu için interaktif görünüm."""
-    def __init__(self, ctx, bet, cog):
-        super().__init__(timeout=60.0)
+    def __init__(self, ctx, bet: int, cog):
+        super().__init__(timeout=600.0)
         self.ctx = ctx
         self.bet = bet
         self.cog = cog
+        self.message = None
 
-    @discord.ui.button(label="🎰 Çevir", style=discord.ButtonStyle.blurple)
-    async def spin(self, interaction, button):
-        if interaction.user.id != self.ctx.author.id: return
-        
-        bal = await self.cog.get_balance(self.ctx.author.id)
-        if bal < self.bet:
-            return await interaction.response.send_message("Yetersiz bakiye!", ephemeral=True)
+    async def on_timeout(self):
+        """10 dakika sonra butonları kaldırır."""
+        disabled_embed = discord.Embed(
+            title="Slot Makinesi 🎰 (Zaman Aşımı)",
+            description=f"Bu makine 10 dakika boyunca kullanılmadığı için kapandı.\n"
+                        f"Yeniden oynamak için `!slot [bahis]` komutunu kullan.",
+            color=discord.Color.dark_grey()
+        )
+        if self.message:
+            await self.message.edit(embed=disabled_embed, view=None)
 
-        await self.cog.update_balance(self.ctx.author.id, -self.bet)
-        
-        symbols = ['🍒', '🍑', '🎮', '7️⃣']
-        result = [random.choice(symbols) for _ in range(3)]
-        
-        win = 0
-        if result[0] == result[1] == result[2]:
-            win = self.bet * (100 if result[0] == '7️⃣' else 10)
-        elif result.count('🍒') == 2:
-            win = self.bet * 2
+    @discord.ui.button(label="Çevir! 🎰", style=discord.ButtonStyle.green, custom_id="slot_spin_button")
+    async def çevir_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.ctx.author.id:
+            await interaction.response.send_message(
+                "Bu senin slot makinen değil! 😠 Kendi makineni açmak için `!slot [bahis]` yaz.", 
+                ephemeral=True
+            )
+            return
+
+        await interaction.response.defer()
+
+        # Bakiye Kontrolü
+        user_id = self.ctx.author.id
+        balance = await self.cog.get_balance(user_id)
+
+        if balance < self.bet:
+            await interaction.followup.send(
+                f"Yetersiz bakiye! 😥 Oynamak için **{self.bet}** tonish coin'e ihtiyacın var. "
+                f"Mevcut bakiyen: **{balance}**\nParan olunca tekrar dene!", 
+                ephemeral=True
+            )
+            return
+
+        await self.cog.update_balance(user_id, -self.bet)
+
+        # Slot Çevirme
+        spin_sonucu = random.choices(SLOT_SEMBOLLERI, weights=SLOT_AGIRLIKLARI, k=3)
+        sonuc_str = f"**[ {spin_sonucu[0]} | {spin_sonucu[1]} | {spin_sonucu[2]} ]**"
+
+        #Kazanç Hesaplama
+        kazanc = 0
+        sonuc_mesaji = ""
+        s1, s2, s3 = spin_sonucu[0], spin_sonucu[1], spin_sonucu[2]
+        embed_color = discord.Color.dark_grey()
+
+        if s1 == s2 == s3:
+            kazanan_sembol = s1
+            kazanc_carpani = SLOT_KAZANCLARI.get(kazanan_sembol, 5)
+            kazanc = self.bet * kazanc_carpani
             
-        msg = f"🎰 | {' '.join(result)} | \n"
-        if win > 0:
-            await self.cog.update_balance(self.ctx.author.id, win)
-            msg += f"🎉 Kazandın! **{win}** coin."
+            if kazanan_sembol == '7️⃣':
+                sonuc_mesaji = f"🎉 **JACKPOT!** 🎉 \n**{kazanc}** tonish coin kazandın!"
+                embed_color = discord.Color.red()
+            else:
+                sonuc_mesaji = f"Tebrikler! 3'lü ({kazanan_sembol}) yakaladın.🥳\n**{kazanc}** tonish coin kazandın!"
+                embed_color = discord.Color.green()
+                
+        elif spin_sonucu.count('🍒') == 2:
+            kazanc_carpani = 2
+            kazanc = self.bet * kazanc_carpani
+            sonuc_mesaji = f"İki kiraz! 🍒\n**{kazanc}** tonish coin kazandın!"
+            embed_color = discord.Color.green()
+        
+        elif spin_sonucu.count('🍑') == 2:
+            kazanc_carpani = 2
+            kazanc = self.bet * kazanc_carpani
+            sonuc_mesaji = f"İki şeftali! 🍑\n**{kazanc}** tonish coin kazandın!"
+            embed_color = discord.Color.green()
+
         else:
-            msg += "Kaybettin..."
-            
-        await interaction.response.edit_message(content=msg, view=self)
+            sonuc_mesaji = f"Maalesef kaybettin... Bir dahaki sefere! 😥"
+            embed_color = discord.Color.dark_grey()
+
+        # Veritabanını Güncelle
+        if kazanc > 0:
+            await self.cog.update_balance(user_id, kazanc)
+
+        yeni_bakiye = await self.cog.get_balance(user_id)
+
+        # Embedi Güncelle
+        new_embed = discord.Embed(
+            title="Slot Makinesi 🎰",
+            description=f"Her çevirme: **{self.bet}** tonish coin\n\n"
+                        f"{sonuc_str}\n\n"
+                        f"{sonuc_mesaji}",
+            color=embed_color
+        )
+        new_embed.set_footer(text=f"Yeni bakiyen: {yeni_bakiye} | Tekrar oynamak için 'Çevir!'")
+        
+        author = self.ctx.author
+        if author.avatar:
+            new_embed.set_author(name=f"{author.display_name}", icon_url=author.avatar.url)
+        else:
+            new_embed.set_author(name=f"{author.display_name}")
+        
+        await interaction.edit_original_response(embed=new_embed, view=self)
 
 class Economy(commands.Cog):
     def __init__(self, bot):
@@ -273,15 +349,39 @@ class Economy(commands.Cog):
             print(f"Blackjack komutunda beklenmedik hata: {error}")
             await ctx.send("Blackjack oynarken beklenmedik bir hata oluştu. 😥 Yetkiliye haber ver!")
 
-    @commands.command()
+    @commands.command(name="slot")
     async def slot(self, ctx, bet: int):
-        """Slot makinesi oyunu."""
-        if bet <= 0: return await ctx.send("Geçersiz bahis.")
-        bal = await self.get_balance(ctx.author.id)
-        if bal < bet: return await ctx.send("Yetersiz bakiye.")
+        """Slot makinesini interaktif bir butonla başlatır."""
         
+        if bet <= 0:
+            await ctx.send("Lütfen geçerli bir bahis miktarı gir (0'dan büyük).")
+            return
+            
+        balance = await self.get_balance(ctx.author.id)
+        
+        if balance < bet:
+            await ctx.send(f"Yetersiz bakiye! 😥 Oynamak için **{bet}** tonish coin'e ihtiyacın var. Mevcut bakiyen: **{balance}**")
+            return
+
         view = SlotView(ctx, bet, self)
-        await ctx.send(f"🎰 **SLOT MAKİNESİ** 🎰\nBahis: **{bet}** coin\n\n❓ | ❓ | ❓", view=view)
+        
+        embed = discord.Embed(
+            title="Slot Makinesi 🎰",
+            description=f"Her 'Çevir!' tuşuna basış **{bet}** tonish coin'e mal olacak.\n\n"
+                        "Bol şans! ✨",
+            color=discord.Color.gold()
+        )
+        
+        if ctx.author.avatar:
+            embed.set_author(name=f"{ctx.author.display_name} makineye oturdu!", icon_url=ctx.author.avatar.url)
+        else:
+            embed.set_author(name=f"{ctx.author.display_name} makineye oturdu!")
+        
+        embed.set_footer(text=f"Bu makine 10 dakika sonra kaybolacak.")
+        
+        message = await ctx.send(embed=embed, view=view)
+        
+        view.message = message
 
     def generate_leaderboard_image(self, users_data):
         """
