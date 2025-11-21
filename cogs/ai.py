@@ -109,31 +109,47 @@ class AI(commands.Cog):
             
         return chunks
 
-    @commands.command()
-    @commands.cooldown(1, AI_COOLDOWN_SANIYE, commands.BucketType.user)
-    async def sor(self, ctx, *, soru: str):
+    async def _generate_ai_response(self, messageable, user_id, prompt):
         """
-        Yapay zekaya soru sorma komutu.
-        Geçmiş konuşmaları hatırlar.
+        Ortak AI yanıt oluşturma fonksiyonu.
+        messageable: Mesajın gönderileceği yer (ctx veya channel)
+        user_id: Sohbet geçmişi için kullanıcı ID'si
+        prompt: Kullanıcının sorusu
         """
-        if not self.api_key: return await ctx.send("AI sistemi şu an devre dışı.")
+        if not self.api_key: return await messageable.send("AI sistemi şu an devre dışı.")
         
-        async with ctx.typing(): # Botun "yazıyor..." olarak görünmesini sağla
-            history_data = await self.load_history(ctx.author.id)
+        async with messageable.typing():
+            history_data = await self.load_history(user_id)
             chat = self.model.start_chat(history=history_data)
             
             try:
-                response = await chat.send_message_async(soru)
-                await self.save_history(ctx.author.id, chat.history)
+                response = await chat.send_message_async(prompt)
+                await self.save_history(user_id, chat.history)
                 
                 text = response.text
-                # Akıllı mesaj bölme
                 chunks = self.split_message(text)
                 for chunk in chunks:
-                    await ctx.send(chunk)
+                    await messageable.send(chunk)
 
             except Exception as e:
-                await ctx.send(f"Hata oluştu: {e}")
+                await messageable.send(f"Hata oluştu: {e}")
+
+    @commands.command()
+    @commands.cooldown(1, AI_COOLDOWN_SANIYE, commands.BucketType.user)
+    async def sor(self, ctx, *, soru: str):
+        await self._generate_ai_response(ctx, ctx.author.id, soru)
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        """Bot etiketlendiğinde çalışır."""
+        if message.author.bot: return # Botları yoksay
+        
+        # Eğer bot etiketlenmişse (ve mesaj bir yanıt değilse veya yanıtlanan bot ise)
+        if self.bot.user in message.mentions and message.content.strip() != f"<@{self.bot.user.id}>":
+            # Etiket kısmını temizle
+            prompt = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
+            if prompt:
+                await self._generate_ai_response(message.channel, message.author.id, prompt)
 
     @commands.command()
     async def sohbetisifirla(self, ctx):
