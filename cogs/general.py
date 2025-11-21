@@ -76,7 +76,7 @@ class General(commands.Cog):
             "**Nishdot Yönetim Kurulu:**\n\n\n"
             "**Başkan:** \nYurdakul Efe Arıkan\n\n"
             "**Başkan Yardımcısı:** \nÖmer Soysal\n\n"
-            "**Yönetim Kurulu:** \nYurdakul Efe Arıkan\nÖmer Soysal\nMehmet Boran Bulut\nEbru Karademir\nOğulcan Danişment\n"
+            "**Yönetim Kurulu:** \nYurdakul Efe Arıkan\nÖmer Soysal\nMehmet Boran Bulut\nEbru Karademir\nOğulcan Danişment\n\n"
             "**Organizasyon Koordinatörü:** \nİbrahim Ata Gültekin\n\n"
             "**Workshop Sorumlusu:** \nYağmur Güven\nYaren Er\n\n"
             "**Game Jam Sorumlusu:** \nOğulcan Danişment\n\n"

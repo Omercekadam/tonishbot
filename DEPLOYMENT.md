@@ -368,3 +368,6 @@ DNS=8.8.8.8 8.8.4.4
 sudo systemctl restart systemd-resolved
 sudo systemctl restart tonishbot
 ```
+
+## ZORLA KAPATMA
+sudo systemctl kill -s SIGKILL tonishbot
