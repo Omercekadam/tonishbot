@@ -24,6 +24,7 @@ class General(commands.Cog):
         linkedin_link = "https://www.linkedin.com/company/nishdot/about"
         whatsapp_link = "https://chat.whatsapp.com/DiufgZg3t1C2a4Y5L4iOLi"
         discord_link = "https://discord.gg/ddumxQaG"
+        youtube_link = "https://www.youtube.com/@nishdot"
 
         # Mesaj içeriğini oluştur
         message_content = (
@@ -33,6 +34,7 @@ class General(commands.Cog):
             f"**Whatsapp:** <{whatsapp_link}>\n"
             f"**Linkedin:** <{linkedin_link}>\n"
             f"**Discord:** <{discord_link}>\n"
+            f"**Youtube:** <{youtube_link}>\n"
         )
         await ctx.send(message_content)
 
