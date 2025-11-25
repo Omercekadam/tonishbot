@@ -69,6 +69,20 @@ class General(commands.Cog):
         )
         await ctx.send(message_content)
 
+
+    @commands.command()
+    async def steam(self, ctx):
+
+        message_content = (
+            "**Tonish'in Steam entegrasyonu ile kullanabileceğiniz komutlar:**\n\n"
+            "**Önemli Not!!:**\nSteam hesabınızı eşleştirebilmek için Steam hesabınızdaki gizlilik ayarlarınızın 'Oyun Detayları' ve 'Envanter' kısımlarının herkese açık olması gerekmektedir. `Steam`>`Ayarlar`>`Gizlilik Ayarları` kısmından güncelleyebilirsiniz."
+            "**!steam_bagla:**Steam hesabınızı Tonish ile eşleştirmek için kullanılır.Örnek: `!steam_bagla https://steamcommunity.com/id/kullaniciadi` veya `!steam_bagla 76561198000000000`\n"
+            "**!oyunsuresi:**Sunucudaki kullanıcıların son 2 haftada toplam Steamde oynadıkları oyun süresini listeler.\n"
+            "**!ortak:**Etiketlediğiniz kullanıcının Steam hesabı ile sizin Steam hesabınızdaki oynayabileceğiniz ortak oyunlar arasında size rastgele bir oyun önerir.Örnek: `!ortak @kullanici`\n"
+            "**!kimoyunda:**Sunucuda daha önce profilini eşlemiş kullanıcıların anlık olarak ne oynadığını listeler.\n"
+        )
+        await ctx.send(message_content)
+
     @commands.command()
     async def yk(self, ctx):
         """

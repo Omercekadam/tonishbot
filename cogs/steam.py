@@ -72,7 +72,7 @@ class Steam(commands.Cog):
             if not steam_id:
                 return await ctx.send("Steam ID bulunamadı! Lütfen geçerli bir Steam ID veya profil linki gir.\nÖrnek: `!steam_bagla https://steamcommunity.com/id/kullaniciadi` veya `!steam_bagla 76561198000000000`")
 
-            # Profilin varlığını ve gizliliğini kontrol et (Opsiyonel ama iyi olur)
+            # Profilin varlığını ve gizliliğini kontrol et
             summary_url = f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={self.api_key}&steamids={steam_id}"
             async with aiohttp.ClientSession() as session:
                 async with session.get(summary_url) as response:
