@@ -6,13 +6,19 @@ import aiohttp
 import json
 import random
 from datetime import datetime
+from dotenv import load_dotenv
 
 DB_PATH = "steam.db"
 
 class Steam(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.api_key = os.getenv("STEAM_API_KEY")
+        load_dotenv() # Force reload .env
+        self.api_key = os.getenv('STEAM_API_KEY')
+        if self.api_key:
+            print(f"[+] Steam API Key yüklendi (Uzunluk: {len(self.api_key)})")
+        else:
+            print("[-] Steam API Key BULUNAMADI! .env dosyasını kontrol edin.")
 
     async def cog_load(self):
         if not self.api_key:
