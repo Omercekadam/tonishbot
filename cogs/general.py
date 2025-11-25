@@ -61,6 +61,7 @@ class General(commands.Cog):
         """
         message_content = (
             "**Tonishbot Komutları:**\n\n"
+            "**@Tonish:**🤖Tonish'in yapay zekası ile konuşmak ve onunla etkileşime geçmek için @Tonish yazarak onu etiketleyip sohbet edebilirsiniz.\n\n"
             "**!link:**\n📱Nishdot'un tüm hesaplarına ulaşmak için kullanabileceğiniz komut.\n\n"
             "**!oyun:**\n🎰Tonishbot üzerinden oynayıp sunucunun sanal ekonomisine dahil olabileceğiniz eğlenceli oyunları görebileceğiniz komut.\n\n"
             "**!ekonomi:**\n💸Tonishbot üzerinden sunucumuzda oynadığınız oyunlar ile kazandığınız coinleri ve liderlik tablosunu görebileceğiniz komut.\n\n" 
