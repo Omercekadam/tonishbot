@@ -490,10 +490,9 @@ class Steam(commands.Cog):
 
             # Fontlar (Varsayılan fontu yüklemeye çalış, yoksa default)
             try:
-                # Windows'ta genelde arial bulunur veya proje klasöründeki fontlar
-                font_large = ImageFont.truetype("arial.ttf", 40)
-                font_medium = ImageFont.truetype("arial.ttf", 25)
-                font_small = ImageFont.truetype("arial.ttf", 18)
+                font_large = ImageFont.truetype("Roboto-Regular.ttf", 40)
+                font_medium = ImageFont.truetype("Roboto-Regular.ttf", 25)
+                font_small = ImageFont.truetype("Roboto-Regular.ttf", 18)
             except:
                 font_large = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
@@ -526,10 +525,38 @@ class Steam(commands.Cog):
             # Oyun Sayısı
             draw.text((50, 310), f"Kütüphane: {len(games)} Oyun", font=font_medium, fill="#AAAAAA")
 
+            # --- Favori Tür Analizi (Top 10 Oyun) ---
+            # Kullanıcı beklerken bilgi verelim (opsiyonel, ama iyi olur)
+            # await ctx.send("Favori tür analiz ediliyor...", delete_after=3)
+            
+            top_10_games = sorted(games, key=lambda x: x.get('playtime_forever', 0), reverse=True)[:10]
+            genre_counts = {}
+            
+            async with aiohttp.ClientSession() as session:
+                for game in top_10_games:
+                    appid = game['appid']
+                    store_url = f"https://store.steampowered.com/api/appdetails?appids={appid}&l=turkish"
+                    try:
+                        async with session.get(store_url) as response:
+                            if response.status == 200:
+                                store_data = await response.json()
+                                if store_data and str(appid) in store_data and store_data[str(appid)]['success']:
+                                    genres = store_data[str(appid)]['data'].get('genres', [])
+                                    for g in genres:
+                                        g_name = g['description']
+                                        genre_counts[g_name] = genre_counts.get(g_name, 0) + 1
+                    except:
+                        continue
+
+            favorite_genre = max(genre_counts, key=genre_counts.get) if genre_counts else "Bilinmiyor"
+
+            # Favori Tür Yazısı
+            draw.text((50, 350), f"Favori Tür: {favorite_genre}", font=font_medium, fill="#FFD700")
+
             # --- Sağ Taraf: Top 3 Oyun ---
             
             game_x = 350
-            game_y = 50
+            game_y = 30
             
             async with aiohttp.ClientSession() as session:
                 for game in top_3:
