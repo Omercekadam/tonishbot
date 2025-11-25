@@ -12,7 +12,7 @@ DB_PATH = "steam.db"
 class Steam(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.api_key = os.getenv('STEAM_API_KEY')
+        self.api_key = os.getenv("STEAM_API_KEY")
 
     async def cog_load(self):
         if not self.api_key:
