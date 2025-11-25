@@ -293,6 +293,142 @@ class Steam(commands.Cog):
             for name, game in playing_users:
                 embed.add_field(name=name, value=f"🎮 {game}", inline=False)
                 
+            for name, game in playing_users:
+                embed.add_field(name=name, value=f"🎮 {game}", inline=False)
+                
+            await ctx.send(embed=embed)
+
+    @commands.command()
+    async def analiz(self, ctx, member: discord.Member = None):
+        """
+        Kullanıcının oyun zevkini (Gamer DNA) analiz eder.
+        En çok oynanan oyunların türlerine göre pasta grafiği oluşturur.
+        """
+        member = member or ctx.author
+        
+        if not self.api_key:
+            return await ctx.send("Steam API anahtarı eksik.")
+
+        async with ctx.typing():
+            # 1. Steam ID'yi bul
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute("SELECT steam_id FROM steam_users WHERE user_id = ?", (member.id,)) as cursor:
+                    row = await cursor.fetchone()
+            
+            if not row:
+                return await ctx.send(f"{member.display_name} henüz Steam hesabını bağlamamış.")
+            
+            steam_id = row[0]
+
+            # 2. En çok oynanan oyunları çek
+            async with aiohttp.ClientSession() as session:
+                url = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={steam_id}&include_appinfo=true&format=json"
+                try:
+                    async with session.get(url) as response:
+                        if response.status != 200:
+                            return await ctx.send("Steam verileri alınamadı.")
+                        data = await response.json()
+                        games = data.get('response', {}).get('games', [])
+                except Exception as e:
+                    print(f"Hata (!analiz games): {e}")
+                    return await ctx.send("Oyun listesi alınırken hata oluştu.")
+
+            if not games:
+                return await ctx.send("Kullanıcının hiç oyunu yok veya gizlilik ayarları kapalı.")
+
+            # En çok oynanan 20 oyunu al (API limitleri ve hız için 50 yerine 20)
+            top_games = sorted(games, key=lambda x: x.get('playtime_forever', 0), reverse=True)[:20]
+            
+            genre_counts = {}
+            
+            # 3. Oyunların türlerini çek (Store API)
+            # Not: Bu işlem biraz sürebilir, kullanıcıya bilgi verelim.
+            status_msg = await ctx.send(f"🧬 {member.display_name} için Gamer DNA analizi yapılıyor... (Bu işlem biraz sürebilir)")
+
+            async with aiohttp.ClientSession() as session:
+                for game in top_games:
+                    appid = game['appid']
+                    store_url = f"https://store.steampowered.com/api/appdetails?appids={appid}&l=turkish"
+                    
+                    try:
+                        async with session.get(store_url) as response:
+                            if response.status == 200:
+                                store_data = await response.json()
+                                if store_data and str(appid) in store_data and store_data[str(appid)]['success']:
+                                    genres = store_data[str(appid)]['data'].get('genres', [])
+                                    for g in genres:
+                                        g_name = g['description']
+                                        genre_counts[g_name] = genre_counts.get(g_name, 0) + 1
+                    except Exception as e:
+                        print(f"Hata (!analiz genre {appid}): {e}")
+                        continue
+                    
+                    # Rate limit yememek için kısa bekleme (opsiyonel ama güvenli)
+                    # await asyncio.sleep(0.1) 
+
+            if not genre_counts:
+                await status_msg.delete()
+                return await ctx.send("Oyun türleri analiz edilemedi. (Steam Store API yanıt vermedi)")
+
+            # 4. Veriyi düzenle ve Grafik Oluştur
+            # En popüler 5 türü al, gerisini "Diğer" yap
+            sorted_genres = sorted(genre_counts.items(), key=lambda x: x[1], reverse=True)
+            top_5 = sorted_genres[:5]
+            others_count = sum(count for _, count in sorted_genres[5:])
+            
+            labels = [g[0] for g in top_5]
+            data = [g[1] for g in top_5]
+            
+            if others_count > 0:
+                labels.append("Diğer")
+                data.append(others_count)
+
+            # QuickChart URL oluştur
+            chart_config = {
+                "type": "pie",
+                "data": {
+                    "labels": labels,
+                    "datasets": [{
+                        "data": data,
+                        "backgroundColor": ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#C9CBCF"]
+                    }]
+                },
+                "options": {
+                    "plugins": {
+                        "legend": {"labels": {"font": {"size": 14, "color": "white"}}},
+                        "datalabels": {"color": "white", "font": {"size": 16, "weight": "bold"}}
+                    }
+                }
+            }
+            
+            # JSON'u URL-safe string'e çevir
+            chart_url = f"https://quickchart.io/chart?c={json.dumps(chart_config)}&bkg=transparent"
+
+            # 5. Yorum Oluştur
+            dominant_genre = top_5[0][0]
+            comments = {
+                "Aksiyon": "Adrenalin tutkunusun! Reflekslerin konuşuyor. 💥",
+                "Macera": "Keşfetmeyi ve hikayelerde kaybolmayı seviyorsun. 🗺️",
+                "RYO": "Karakter geliştirmek ve dünyaları kurtarmak senin işin. 🛡️",
+                "Strateji": "Büyük resmî gören bir taktik dehasısın. 🧠",
+                "Simülasyon": "Gerçekçilik ve detaylar senin için her şey. ✈️",
+                "Spor": "Rekabetçi ruhun sahada (veya ekranda) belli oluyor. ⚽",
+                "Yarış": "Hız senin göbek adın! 🏎️",
+                "Bağımsız Yapımcı": "Gizli hazineleri bulmayı seven bir gurmesin. 💎",
+                "Devasa Çok Oyunculu": "Sosyal bir oyuncusun, klanın sensiz yapamaz. 👥"
+            }
+            comment = comments.get(dominant_genre, "Çok yönlü bir oyuncusun! Her türden keyif alıyorsun. 🎮")
+
+            # Embed Gönder
+            embed = discord.Embed(
+                title=f"🧬 {member.display_name} - Oyun DNA'sı",
+                description=f"**Baskın Tür:** {dominant_genre}\n\n_{comment}_",
+                color=discord.Color.dark_theme()
+            )
+            embed.set_image(url=chart_url)
+            embed.set_footer(text=f"Analiz edilen oyun sayısı: {len(top_games)}")
+
+            await status_msg.delete()
             await ctx.send(embed=embed)
 
 async def setup(bot):
