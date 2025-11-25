@@ -5,6 +5,8 @@ import os
 import aiohttp
 import json
 import random
+import io
+from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -432,6 +434,138 @@ class Steam(commands.Cog):
 
             await status_msg.delete()
             await ctx.send(embed=embed)
+
+            await status_msg.delete()
+            await ctx.send(embed=embed)
+
+    @commands.command(aliases=["kimlik"])
+    async def kart(self, ctx, member: discord.Member = None):
+        """
+        Kullanıcının Steam Gamer Kartını oluşturur.
+        """
+        member = member or ctx.author
+        
+        if not self.api_key:
+            return await ctx.send("Steam API anahtarı eksik.")
+
+        async with ctx.typing():
+            # 1. Veritabanından Steam ID çek
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute("SELECT steam_id FROM steam_users WHERE user_id = ?", (member.id,)) as cursor:
+                    row = await cursor.fetchone()
+            
+            if not row:
+                return await ctx.send(f"{member.display_name} henüz Steam hesabını bağlamamış.")
+            
+            steam_id = row[0]
+
+            # 2. Steam'den Oyunları Çek
+            async with aiohttp.ClientSession() as session:
+                # Oyunlar
+                url_games = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={steam_id}&include_appinfo=true&format=json"
+                # Profil (Avatar için) - Discord avatarı da kullanılabilir ama Steam avatarı daha uyumlu olabilir. 
+                # Kullanıcı isteği: "kullanıcının profil resmini" dedi, Discord profil resmi daha mantıklı çünkü bot Discord botu.
+                
+                try:
+                    async with session.get(url_games) as resp:
+                        if resp.status != 200: return await ctx.send("Steam verileri alınamadı.")
+                        data = await resp.json()
+                        games = data.get('response', {}).get('games', [])
+                except Exception as e:
+                    print(f"Hata (!kart): {e}")
+                    return await ctx.send("Veri alınırken hata oluştu.")
+
+            if not games:
+                return await ctx.send("Gösterilecek oyun bulunamadı.")
+
+            # En çok oynanan 3 oyunu al
+            top_3 = sorted(games, key=lambda x: x.get('playtime_forever', 0), reverse=True)[:3]
+
+            # 3. Görsel Oluşturma (Pillow)
+            # Arka plan (800x400)
+            width, height = 800, 400
+            background_color = (30, 30, 35) # Koyu gri
+            card = Image.new("RGBA", (width, height), background_color)
+            draw = ImageDraw.Draw(card)
+
+            # Fontlar (Varsayılan fontu yüklemeye çalış, yoksa default)
+            try:
+                # Windows'ta genelde arial bulunur veya proje klasöründeki fontlar
+                font_large = ImageFont.truetype("arial.ttf", 40)
+                font_medium = ImageFont.truetype("arial.ttf", 25)
+                font_small = ImageFont.truetype("arial.ttf", 18)
+            except:
+                font_large = ImageFont.load_default()
+                font_medium = ImageFont.load_default()
+                font_small = ImageFont.load_default()
+
+            # --- Sol Taraf: Kullanıcı Bilgisi ---
+            
+            # Avatar
+            avatar_size = 150
+            if member.avatar:
+                avatar_bytes = await member.avatar.read()
+                avatar_img = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
+                avatar_img = avatar_img.resize((avatar_size, avatar_size))
+                
+                # Yuvarlak maske
+                mask = Image.new("L", (avatar_size, avatar_size), 0)
+                draw_mask = ImageDraw.Draw(mask)
+                draw_mask.ellipse((0, 0, avatar_size, avatar_size), fill=255)
+                
+                card.paste(avatar_img, (50, 50), mask)
+            
+            # Kullanıcı Adı
+            draw.text((50, 220), member.display_name, font=font_large, fill="white")
+            
+            # Toplam Oyun Saati
+            total_minutes = sum(g.get('playtime_forever', 0) for g in games)
+            total_hours = total_minutes // 60
+            draw.text((50, 270), f"Toplam Süre: {total_hours} Saat", font=font_medium, fill="#AAAAAA")
+            
+            # Oyun Sayısı
+            draw.text((50, 310), f"Kütüphane: {len(games)} Oyun", font=font_medium, fill="#AAAAAA")
+
+            # --- Sağ Taraf: Top 3 Oyun ---
+            
+            game_x = 350
+            game_y = 50
+            
+            async with aiohttp.ClientSession() as session:
+                for game in top_3:
+                    appid = game['appid']
+                    game_name = game['name']
+                    playtime = game.get('playtime_forever', 0) // 60
+                    
+                    # Kapak Resmi URL
+                    header_url = f"https://steamcdn-a.akamaihd.net/steam/apps/{appid}/header.jpg"
+                    
+                    try:
+                        async with session.get(header_url) as resp:
+                            if resp.status == 200:
+                                img_data = await resp.read()
+                                game_img = Image.open(io.BytesIO(img_data)).convert("RGBA")
+                                # Boyutlandır (Örn: 400x187 -> 200x90 gibi küçültelim)
+                                game_img = game_img.resize((240, 112)) 
+                                card.paste(game_img, (game_x, game_y))
+                    except:
+                        # Resim yüklenemezse kutu çiz
+                        draw.rectangle([game_x, game_y, game_x+240, game_y+112], outline="white", width=2)
+                        draw.text((game_x+10, game_y+40), "Resim Yok", fill="white")
+
+                    # Oyun Adı ve Süresi
+                    # draw.text((game_x + 250, game_y + 10), game_name[:20], font=font_medium, fill="white")
+                    draw.text((game_x + 250, game_y + 40), f"{playtime} Saat", font=font_small, fill="#FFD700")
+
+                    game_y += 120 # Bir sonraki oyun için aşağı kaydır
+
+            # ByteIO'ya kaydet
+            buffer = io.BytesIO()
+            card.save(buffer, format="PNG")
+            buffer.seek(0)
+            
+            file = discord.File(buffer, filename="gamer_card.png")
+            await ctx.send(file=file)
 
 async def setup(bot):
     await bot.add_cog(Steam(bot))
