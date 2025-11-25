@@ -402,7 +402,9 @@ class Steam(commands.Cog):
             }
             
             # JSON'u URL-safe string'e çevir
-            chart_url = f"https://quickchart.io/chart?c={json.dumps(chart_config)}&bkg=transparent"
+            import urllib.parse
+            encoded_config = urllib.parse.quote(json.dumps(chart_config))
+            chart_url = f"https://quickchart.io/chart?c={encoded_config}&bkg=transparent"
 
             # 5. Yorum Oluştur
             dominant_genre = top_5[0][0]
