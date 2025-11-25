@@ -490,9 +490,9 @@ class Steam(commands.Cog):
 
             # Fontlar (Varsayılan fontu yüklemeye çalış, yoksa default)
             try:
-                font_large = ImageFont.truetype("Roboto-Regular.ttf", 40)
-                font_medium = ImageFont.truetype("Roboto-Regular.ttf", 25)
-                font_small = ImageFont.truetype("Roboto-Regular.ttf", 18)
+                font_large = ImageFont.truetype("Roboto-Regular.ttf", 20)
+                font_medium = ImageFont.truetype("Roboto-Regular.ttf", 15)
+                font_small = ImageFont.truetype("Roboto-Regular.ttf", 10)
             except:
                 font_large = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
@@ -551,7 +551,7 @@ class Steam(commands.Cog):
             favorite_genre = max(genre_counts, key=genre_counts.get) if genre_counts else "Bilinmiyor"
 
             # Favori Tür Yazısı
-            draw.text((50, 350), f"Favori Tür: {favorite_genre}", font=font_medium, fill="#FFD700")
+            draw.text((50, 350), f"Favori Tür: {favorite_genre}", font=font_medium, fill="#AAAAAA")
 
             # --- Sağ Taraf: Top 3 Oyun ---
             
@@ -582,7 +582,7 @@ class Steam(commands.Cog):
 
                     # Oyun Adı ve Süresi
                     # draw.text((game_x + 250, game_y + 10), game_name[:20], font=font_medium, fill="white")
-                    draw.text((game_x + 250, game_y + 40), f"{playtime} Saat", font=font_small, fill="#FFD700")
+                    draw.text((game_x + 250, game_y + 40), f"{playtime} Saat", font=font_small, fill="#AAAAAA")
 
                     game_y += 120 # Bir sonraki oyun için aşağı kaydır
 
