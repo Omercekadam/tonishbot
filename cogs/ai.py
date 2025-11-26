@@ -166,5 +166,40 @@ class AI(commands.Cog):
         await member.ban(reason=reason)
         await ctx.send(f"{member.mention} yasaklandı. Sebep: {reason}")
 
+
+    @bot.command(name="benzeroner", aliases=["oner", "tavsiye"])
+    async def recommend_game(ctx, *, game_name: str):
+        """
+        Girilen oyuna benzer, tasarım odaklı oyun önerileri yapar.
+        Kullanım: !benzer-oner Hollotw Knight
+        """
+        async with ctx.typing():
+            prompt = (
+            f"Sen tecrübeli bir oyun tasarımcısı ve küratörüsün. Adın Tonish "
+            f"Bir kullanıcı '{game_name}' oyununu çok sevdiğini söyledi ve benzer oyunlar arıyor. "
+            f"Ona bu oyunun mekaniklerine, sanat tarzına veya oyun döngüsüne (gameplay loop) benzeyen "
+            f"3 TANE oyun öner. \n\n"
+            f"Kurallar:\n"
+            f"1. Çok popüler oyunları (AAA) değil, daha çok 'Indie' veya 'Gizli Cevher' (Hidden Gem) olanları seç.\n"
+            f"2. Her öneri için, neden benzediğini oyun tasarım terimleriyle (örn: metroidvania harita yapısı, souls-like zorluk vb.) kısaca açıkla.\n"
+            f"3. Samimi ve heyecanlı bir dille, emoji kullanarak listele."
+        )
+        try:
+            cevap = await get_gemini_response(prompt, user_id=0)
+            
+            embed = discord.Embed(
+                title=f"🎮 '{game_name}' Tarzı Oyun Önerileri",
+                description=cevap,
+                color=discord.Color.purple()
+            )
+            embed.set_footer(text=f"{ctx.author.display_name} için özel olarak analiz edildi.", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
+            
+            await ctx.send(embed=embed)
+            
+        except Exception as e:
+            await ctx.send(f"Öneri motoru çalışırken bir hata oluştu: {e}")
+
+
+
 async def setup(bot):
     await bot.add_cog(AI(bot))

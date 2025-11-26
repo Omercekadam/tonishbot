@@ -492,7 +492,7 @@ class Steam(commands.Cog):
             try:
                 font_large = ImageFont.truetype("Roboto-Regular.ttf", 20)
                 font_medium = ImageFont.truetype("Roboto-Regular.ttf", 15)
-                font_small = ImageFont.truetype("Roboto-Regular.ttf", 10)
+                font_small = ImageFont.truetype("Roboto-Regular.ttf", 12)
             except:
                 font_large = ImageFont.load_default()
                 font_medium = ImageFont.load_default()
@@ -556,7 +556,7 @@ class Steam(commands.Cog):
             # --- Sağ Taraf: Top 3 Oyun ---
             
             game_x = 350
-            game_y = 30
+            game_y = 20
             
             async with aiohttp.ClientSession() as session:
                 for game in top_3:
@@ -593,6 +593,120 @@ class Steam(commands.Cog):
             
             file = discord.File(buffer, filename="gamer_card.png")
             await ctx.send(file=file)
+
+    @commands.command(name="sunucu-istatistik", aliases=["server-stats"])
+    async def sunucu_istatistik(self, ctx):
+        """
+        Sunucudaki tüm bağlı Steam hesaplarının kolektif istatistiklerini gösterir.
+        Toplam oyun süresi, en popüler oyun ve sunucunun favori türü gibi verileri analiz eder.
+        """
+        if not self.api_key:
+            return await ctx.send("Steam API anahtarı eksik.")
+
+        status_msg = await ctx.send("📊 Sunucu kütüphanesi taranıyor... Bu işlem kullanıcı sayısına göre zaman alabilir.")
+
+        async with ctx.typing():
+            # 1. Tüm kullanıcıları çek
+            async with aiosqlite.connect(DB_PATH) as db:
+                async with db.execute("SELECT steam_id FROM steam_users") as cursor:
+                    users = await cursor.fetchall()
+
+            if not users:
+                await status_msg.delete()
+                return await ctx.send("Henüz kimse Steam hesabını bağlamamış.")
+
+            total_playtime_minutes = 0
+            game_ownership = {} # {appid: {"name": name, "count": count}}
+            
+            # 2. Her kullanıcının oyunlarını çek ve topla
+            async with aiohttp.ClientSession() as session:
+                for (steam_id,) in users:
+                    url = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={steam_id}&include_appinfo=true&format=json"
+                    try:
+                        async with session.get(url) as response:
+                            if response.status == 200:
+                                data = await response.json()
+                                games = data.get('response', {}).get('games', [])
+                                
+                                for game in games:
+                                    appid = game['appid']
+                                    playtime = game.get('playtime_forever', 0)
+                                    name = game['name']
+                                    
+                                    total_playtime_minutes += playtime
+                                    
+                                    if appid not in game_ownership:
+                                        game_ownership[appid] = {"name": name, "count": 0}
+                                    game_ownership[appid]["count"] += 1
+                    except Exception as e:
+                        print(f"Hata (sunucu-istatistik user {steam_id}): {e}")
+                        continue
+
+            if not game_ownership:
+                await status_msg.delete()
+                return await ctx.send("Sunucu verisi oluşturulamadı. (Gizlilik ayarları veya API hatası)")
+
+            # 3. İstatistikleri Hesapla
+            
+            # Toplam Süre
+            total_hours = total_playtime_minutes // 60
+            
+            # En Popüler Oyun
+            most_popular_appid = max(game_ownership, key=lambda k: game_ownership[k]["count"])
+            most_popular_game = game_ownership[most_popular_appid]
+            
+            # 4. Sunucu Favori Türü (En popüler 20 oyun üzerinden)
+            # Tüm oyunları taramak çok uzun sürer, bu yüzden en çok sahip olunan 20 oyunu baz alıyoruz.
+            sorted_games_by_popularity = sorted(game_ownership.items(), key=lambda x: x[1]["count"], reverse=True)[:20]
+            genre_counts = {}
+            
+            async with aiohttp.ClientSession() as session:
+                for appid, info in sorted_games_by_popularity:
+                    store_url = f"https://store.steampowered.com/api/appdetails?appids={appid}&l=turkish"
+                    try:
+                        async with session.get(store_url) as response:
+                            if response.status == 200:
+                                store_data = await response.json()
+                                if store_data and str(appid) in store_data and store_data[str(appid)]['success']:
+                                    genres = store_data[str(appid)]['data'].get('genres', [])
+                                    for g in genres:
+                                        g_name = g['description']
+                                        genre_counts[g_name] = genre_counts.get(g_name, 0) + 1
+                    except:
+                        continue
+            
+            server_favorite_genre = max(genre_counts, key=genre_counts.get) if genre_counts else "Bilinmiyor"
+
+            # 5. Embed Oluştur
+            embed = discord.Embed(
+                title="📊 Sunucu Kütüphane İstatistikleri",
+                description=f"Bu sunucudaki **{len(users)}** Steam kullanıcısının verileri analiz edildi ve en çok sahip olunan 20 oyun arasından sunucu analizi yapıldı.",
+                color=discord.Color.gold()
+            )
+            
+            embed.add_field(
+                name="⏳ Toplam Oyun Süresi", 
+                value=f"**{total_hours:,}** Saat", 
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🏆 En Popüler Oyun", 
+                value=f"**{most_popular_game['name']}**\n({most_popular_game['count']} kişi sahip)", 
+                inline=False
+            )
+            
+            embed.add_field(
+                name="🎭 Sunucunun Favori Türü", 
+                value=f"**{server_favorite_genre}**", 
+                inline=False
+            )
+            
+            # En popüler oyunun resmini ekle
+            embed.set_thumbnail(url=f"https://steamcdn-a.akamaihd.net/steam/apps/{most_popular_appid}/header.jpg")
+            
+            await status_msg.delete()
+            await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Steam(bot))

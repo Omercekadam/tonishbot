@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import os
 import pytz
+import random
 from datetime import datetime
 
 class General(commands.Cog):
@@ -66,10 +67,26 @@ class General(commands.Cog):
             "**!oyun:**\n🎰Tonishbot üzerinden oynayıp sunucunun sanal ekonomisine dahil olabileceğiniz eğlenceli oyunları görebileceğiniz komut.\n\n"
             "**!ekonomi:**\n💸Tonishbot üzerinden sunucumuzda oynadığınız oyunlar ile kazandığınız coinleri ve liderlik tablosunu görebileceğiniz komut.\n\n" 
             "**!yk:**\n👨‍💼👩‍💼Nishdot yönetim kurulunu görüntülemek için kullanabileceğiniz komut.\n\n"
+            "**!steam:**\nTonish'in Steam entegrasyonu ile kullanabileceğiniz havalı komutlar.\n\n"
+            "**!oyunfikri:**\n'Ne yapsak?' diye düşündüğünüzde ya da sadece ufak fikirler üretmek istediğinizde size binlerce farklı kombinasyon üreterek oyun fikri üretebileceğiniz bir makine yaratır.\n\n"
+            "**!benzeroner [oyun adı]:**\nTonish bahsettiğiniz oyunu baz alarak size oynayabileceğiniz 3 adet farklı oyun önerir. "
         )
         await ctx.send(message_content)
 
+    @commands.command()
+    async def oyun(self,ctx):
+        """
+        Tonishbot üzerinden oynanan oyunların bilgisini veren komut"""
 
+        message_content = (
+            "**Tonish üzerinden oyun oynarak Tonishcoin kazanabileceğiniz ve sunucu ekonomisine katılabileceğiniz komutlar.**\n\n"
+            "**!blackjack ya da !bj:**\n♠️Blackjack oynayabileceğiniz komut.\n"
+            "**!slot:**\n🎰Slot oynayabileceğiniz komut.\n"
+            "**!zar[zar yüzeyi]:**\n🎲Zar oynayabileceğiniz komut tonishcoin ile alakası yok.\n"
+            "**!bakiye:**\n💵Bankada ne kadar Tonishcoininiz olduğunu görmek için kullanabileceğiniz komut.\n"
+            "**!gunluk:**\n💰Günlük Tonishcoin kazanabileceğiniz komut.\n"
+            "**!liderlik:**\n🏆Tonishcoin kazandığınızda sunucudaki liderlik tablosunu görebileceğiniz komut.\n"
+        )
     @commands.command()
     async def steam(self, ctx):
 
@@ -222,6 +239,70 @@ class General(commands.Cog):
         await target_channel.send(embed=embed)
         await ctx.send("✅ Etkinlik sayacı gönderildi.", ephemeral=True, delete_after=10)
         await ctx.message.delete()
+
+    @commands.command(name="oyunfikri", aliases=["gameidea"])
+    async def oyunfikri(self, ctx):
+        """
+        Oyun geliştiriciler için rastgele oyun fikri üretir.
+        Tür, Tema ve Kısıtlama kombinasyonları sunar.
+        """
+        view = GameIdeaView(ctx.author)
+        embed = view.generate_embed()
+        await ctx.send(embed=embed, view=view)
+
+class GameIdeaView(discord.ui.View):
+    def __init__(self, author):
+        super().__init__(timeout=600) # 10 dakika sonra zaman aşımı
+        self.author = author
+        
+        # Veri Listeleri
+        self.genres = [
+            "Platformer", "RPG", "Bulmaca (Puzzle)", "Strateji", "Hayatta Kalma (Survival)", 
+            "Korku", "Gizlilik (Stealth)", "Ritim Oyunu", "Metroidvania", "Roguelike", 
+            "Görsel Roman", "FPS", "Kart Oyunu", "Tower Defense","Spor","Building","Casual","Tamamen Serbest"
+        ]
+        
+        self.themes = [
+            "Siberpunk İstanbul", "Terk edilmiş uzay istasyonu", "Orta çağ panayırı", 
+            "Su altı şehri", "Rüyalar alemi", "Vahşi Batı", "Kıyamet sonrası", 
+            "Oyuncak dünyası", "Antik Mısır", "Hacker dünyası", "Korsan gemisi",
+            "Büyülü orman", "Distopik gelecek", "Noir dedektiflik", "Kırmızı evren","Renkler Yok",
+            "1900's","1800's","Antik Mısır","Antik Yunanistan","Distopya","Ütopya","İstanbul","Ankara","Osmanlı",
+            "Tamamen serbest"
+        ]
+        
+        self.constraints = [
+            "Zıplamak yok", "Sadece tek tuş kullanılabilir", "Zaman sadece sen hareket edince akar", 
+            "Düşmanları öldüremezsin, onlarla dost olmalısın", "Her şey yok edilebilir", 
+            "Siyah-beyaz grafikler", "Metin yok (sadece semboller)", "Sesler görselleştirilmeli", 
+            "Can barın yok (tek vuruşta ölürsün)", "Envanterin sadece 1 eşya alabilir",
+            "Karanlıkta göremiyorsun", "Yer çekimi sürekli değişiyor","Tamamen Serbest"
+        ]
+
+    def generate_embed(self):
+        genre = random.choice(self.genres)
+        theme = random.choice(self.themes)
+        constraint = random.choice(self.constraints)
+        
+        embed = discord.Embed(
+            title="🎲 Rastgele Oyun Fikri",
+            color=discord.Color.random()
+        )
+        
+        embed.add_field(name="🕹️ Tür", value=genre, inline=False)
+        embed.add_field(name="🌍 Tema", value=theme, inline=False)
+        embed.add_field(name="⚠️ Kısıtlama", value=constraint, inline=False)
+        
+        embed.set_footer(text="Hadi bu fikri 5 dakikada beyin fırtınası yapın!")
+        return embed
+
+    @discord.ui.button(label="Yeni Fikir 🎲", style=discord.ButtonStyle.primary)
+    async def regenerate(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.author.id:
+            return await interaction.response.send_message("Bu makineyi sadece komutu yazan kişi kullanabilir! Kendi fikrini üretmek için `!oyunfikri` yaz.", ephemeral=True)
+        
+        embed = self.generate_embed()
+        await interaction.response.edit_message(embed=embed, view=self)
 
 # Botun bu eklentiyi yüklemesi için gereken fonksiyon
 async def setup(bot):
