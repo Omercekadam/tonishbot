@@ -87,6 +87,7 @@ class General(commands.Cog):
             "**!gunluk:**\n💰Günlük Tonishcoin kazanabileceğiniz komut.\n"
             "**!liderlik:**\n🏆Tonishcoin kazandığınızda sunucudaki liderlik tablosunu görebileceğiniz komut.\n"
         )
+        await ctx.send(message_content)
     @commands.command()
     async def steam(self, ctx):
 
