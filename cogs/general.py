@@ -98,6 +98,8 @@ class General(commands.Cog):
             "**!oyunsuresi:**\n🕧Sunucudaki kullanıcıların son 2 haftada toplam Steamde oynadıkları oyun süresini listeler.\n\n"
             "**!ortak:**\n👥Etiketlediğiniz kullanıcının Steam hesabı ile sizin Steam hesabınızdaki oynayabileceğiniz ortak oyunlar arasında size rastgele bir oyun önerir.Örnek: `!ortak @kullanici`\n\n"
             "**!kimoyunda:**\n🟢Sunucuda daha önce profilini eşlemiş kullanıcıların anlık olarak ne oynadığını listeler.\n\n"
+            "**!kart:**\n🪪Steam hesabınızı analiz edip oyuncu profilinize göre size bir Gamer Kart oluşturur.\n\n"
+            "**!analiz:**\n🧬Steam hesabınızı analiz edip size göre bir Gamer DNA oluşturur.\n\n"
         )
         await ctx.send(message_content)
 
