@@ -67,9 +67,9 @@ class General(commands.Cog):
             "**!oyun:**\n🎰Tonishbot üzerinden oynayıp sunucunun sanal ekonomisine dahil olabileceğiniz eğlenceli oyunları görebileceğiniz komut.\n\n"
             "**!ekonomi:**\n💸Tonishbot üzerinden sunucumuzda oynadığınız oyunlar ile kazandığınız coinleri ve liderlik tablosunu görebileceğiniz komut.\n\n" 
             "**!yk:**\n👨‍💼👩‍💼Nishdot yönetim kurulunu görüntülemek için kullanabileceğiniz komut.\n\n"
-            "**!steam:**\nTonish'in Steam entegrasyonu ile kullanabileceğiniz havalı komutlar.\n\n"
-            "**!oyunfikri:**\n'Ne yapsak?' diye düşündüğünüzde ya da sadece ufak fikirler üretmek istediğinizde size binlerce farklı kombinasyon üreterek oyun fikri üretebileceğiniz bir makine yaratır.\n\n"
-            "**!benzeroner [oyun adı]:**\nTonish bahsettiğiniz oyunu baz alarak size oynayabileceğiniz 3 adet farklı oyun önerir. "
+            "**!steam:**\n🖤Tonish'in Steam entegrasyonu ile kullanabileceğiniz havalı komutlar.\n\n"
+            "**!oyunfikri:**\n💭'Ne yapsak?' diye düşündüğünüzde ya da sadece ufak fikirler üretmek istediğinizde size binlerce farklı kombinasyon üreterek oyun fikri üretebileceğiniz bir makine yaratır.\n\n"
+            "**!benzeroner [oyun adı]:**\n🎮Tonish bahsettiğiniz oyunu baz alarak size oynayabileceğiniz 3 adet farklı oyun önerir. "
         )
         await ctx.send(message_content)
 
@@ -93,11 +93,11 @@ class General(commands.Cog):
 
         message_content = (
             "**Tonish'in Steam entegrasyonu ile kullanabileceğiniz komutlar:**\n\n"
-            "**Önemli Not!!:**\nSteam hesabınızı eşleştirebilmek için Steam hesabınızdaki gizlilik ayarlarınızın 'Oyun Detayları' ve 'Envanter' kısımlarının herkese açık olması gerekmektedir. `Steam`>`Ayarlar`>`Gizlilik Ayarları` kısmından güncelleyebilirsiniz."
-            "**!steam_bagla:**Steam hesabınızı Tonish ile eşleştirmek için kullanılır.Örnek: `!steam_bagla https://steamcommunity.com/id/kullaniciadi` veya `!steam_bagla 76561198000000000`\n"
-            "**!oyunsuresi:**Sunucudaki kullanıcıların son 2 haftada toplam Steamde oynadıkları oyun süresini listeler.\n"
-            "**!ortak:**Etiketlediğiniz kullanıcının Steam hesabı ile sizin Steam hesabınızdaki oynayabileceğiniz ortak oyunlar arasında size rastgele bir oyun önerir.Örnek: `!ortak @kullanici`\n"
-            "**!kimoyunda:**Sunucuda daha önce profilini eşlemiş kullanıcıların anlık olarak ne oynadığını listeler.\n"
+            "**Önemli Not!!:‼️**\nSteam hesabınızı eşleştirebilmek için Steam hesabınızdaki gizlilik ayarlarınızın 'Oyun Detayları' ve 'Envanter' kısımlarının herkese açık olması gerekmektedir. `Steam`>`Ayarlar`>`Gizlilik Ayarları` kısmından güncelleyebilirsiniz.\n"
+            "**!steam_bagla:**\n⛓️Steam hesabınızı Tonish ile eşleştirmek için kullanılır.Örnek: `!steam_bagla https://steamcommunity.com/id/kullaniciadi` veya `!steam_bagla 76561198000000000`\n"
+            "**!oyunsuresi:**\n🕧Sunucudaki kullanıcıların son 2 haftada toplam Steamde oynadıkları oyun süresini listeler.\n"
+            "**!ortak:**👥\nEtiketlediğiniz kullanıcının Steam hesabı ile sizin Steam hesabınızdaki oynayabileceğiniz ortak oyunlar arasında size rastgele bir oyun önerir.Örnek: `!ortak @kullanici`\n"
+            "**!kimoyunda:**🟢\nSunucuda daha önce profilini eşlemiş kullanıcıların anlık olarak ne oynadığını listeler.\n"
         )
         await ctx.send(message_content)
 
