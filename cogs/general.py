@@ -93,11 +93,11 @@ class General(commands.Cog):
 
         message_content = (
             "**Tonish'in Steam entegrasyonu ile kullanabileceğiniz komutlar:**\n\n"
-            "**Önemli Not!!:‼️**\nSteam hesabınızı eşleştirebilmek için Steam hesabınızdaki gizlilik ayarlarınızın 'Oyun Detayları' ve 'Envanter' kısımlarının herkese açık olması gerekmektedir. `Steam`>`Ayarlar`>`Gizlilik Ayarları` kısmından güncelleyebilirsiniz.\n"
-            "**!steam_bagla:**\n⛓️Steam hesabınızı Tonish ile eşleştirmek için kullanılır.Örnek: `!steam_bagla https://steamcommunity.com/id/kullaniciadi` veya `!steam_bagla 76561198000000000`\n"
-            "**!oyunsuresi:**\n🕧Sunucudaki kullanıcıların son 2 haftada toplam Steamde oynadıkları oyun süresini listeler.\n"
-            "**!ortak:**👥\nEtiketlediğiniz kullanıcının Steam hesabı ile sizin Steam hesabınızdaki oynayabileceğiniz ortak oyunlar arasında size rastgele bir oyun önerir.Örnek: `!ortak @kullanici`\n"
-            "**!kimoyunda:**🟢\nSunucuda daha önce profilini eşlemiş kullanıcıların anlık olarak ne oynadığını listeler.\n"
+            "**‼️Önemli Not‼️:**\nSteam hesabınızı eşleştirebilmek için Steam hesabınızdaki gizlilik ayarlarınızın 'Oyun Detayları' ve 'Envanter' kısımlarının herkese açık olması gerekmektedir. `Steam`>`Ayarlar`>`Gizlilik Ayarları` kısmından güncelleyebilirsiniz.\n\n"
+            "**!steam_bagla:**\n⛓️Steam hesabınızı Tonish ile eşleştirmek için kullanılır.Örnek: `!steam_bagla https://steamcommunity.com/id/kullaniciadi` veya `!steam_bagla 76561198000000000`\n\n"
+            "**!oyunsuresi:**\n🕧Sunucudaki kullanıcıların son 2 haftada toplam Steamde oynadıkları oyun süresini listeler.\n\n"
+            "**!ortak:**\n👥Etiketlediğiniz kullanıcının Steam hesabı ile sizin Steam hesabınızdaki oynayabileceğiniz ortak oyunlar arasında size rastgele bir oyun önerir.Örnek: `!ortak @kullanici`\n\n"
+            "**!kimoyunda:**\n🟢Sunucuda daha önce profilini eşlemiş kullanıcıların anlık olarak ne oynadığını listeler.\n\n"
         )
         await ctx.send(message_content)
 
