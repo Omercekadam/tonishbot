@@ -255,14 +255,18 @@ class General(commands.Cog):
 
 class GameIdeaView(discord.ui.View):
     def __init__(self, author):
-        super().__init__(timeout=600) # 10 dakika sonra zaman aşımı
+        super().__init__(timeout=600) 
         self.author = author
         
         # Veri Listeleri
         self.genres = [
             "Platformer", "RPG", "Bulmaca (Puzzle)", "Strateji", "Hayatta Kalma (Survival)", 
             "Korku", "Gizlilik (Stealth)", "Ritim Oyunu", "Metroidvania", "Roguelike", 
-            "Görsel Roman", "FPS", "Kart Oyunu", "Tower Defense","Spor","Building","Casual","Tamamen Serbest"
+            "Görsel Roman", "FPS", "Kart Oyunu", "Tower Defense","Spor","Building","Casual","Tamamen Serbest","Hack & Slash", 
+            "Point & Click Macera", "Dungeon Crawler", "Bullet Hell", "Tycoon / İşletme", "Idle / Clicker", 
+            "Sanal Bebek (Tamagotchi tarzı)", "Dating Sim (Flört Simülasyonu)", 
+            "Battle Royale", "Endless Runner (Sonsuz Koşu)", "Text Adventure (Metin Tabanlı)", 
+            "Party Game", "Zanaat / Crafting Odaklı", "Yarış (Racing)", "Müzik/Ritim"
         ]
         
         self.themes = [
@@ -271,7 +275,11 @@ class GameIdeaView(discord.ui.View):
             "Oyuncak dünyası", "Antik Mısır", "Hacker dünyası", "Korsan gemisi",
             "Büyülü orman", "Distopik gelecek", "Noir dedektiflik", "Kırmızı evren","Renkler Yok",
             "1900's","1800's","Antik Mısır","Antik Yunanistan","Distopya","Ütopya","İstanbul","Ankara","Osmanlı",
-            "Tamamen serbest"
+            "Tamamen serbest","Kapadokya Peri Bacaları", "Kapalıçarşı'nın Dehlizleri", "Karadeniz Yaylaları", 
+            "90'lar Türkiye'si", "Ege Kasabası","Mars Kolonisi", "Yapay Zeka'nın Zihni", "Dev Bir Canavarın İçi", 
+            "Bulutların Üzerindeki Krallık", "Yeraltı Metro Tünelleri", "Solarpunk (Doğa ile teknoloji iç içe)",
+            "Zamanın Donduğu Şehir", "Sonsuz Kütüphane", "Terk Edilmiş Lunapark","Steampunk Laboratuvar", "Lovecraftian (Kozmik Korku)", "Neon Noir",
+            "Piksel Piksel Bozulmuş Dünya (Glitch World)", "Oyuncak Ev", "Kar Küresi İçi"
         ]
         
         self.constraints = [
@@ -279,7 +287,18 @@ class GameIdeaView(discord.ui.View):
             "Düşmanları öldüremezsin, onlarla dost olmalısın", "Her şey yok edilebilir", 
             "Siyah-beyaz grafikler", "Metin yok (sadece semboller)", "Sesler görselleştirilmeli", 
             "Can barın yok (tek vuruşta ölürsün)", "Envanterin sadece 1 eşya alabilir",
-            "Karanlıkta göremiyorsun", "Yer çekimi sürekli değişiyor","Tamamen Serbest"
+            "Karanlıkta göremiyorsun", "Yer çekimi sürekli değişiyor","Tamamen Serbest""Sağlık barı yok (Canın kıyafetin/zırhın kadardır)", 
+            "Düşmanlar senin hareketlerini taklit eder", 
+            "Sürekli kan kaybediyorsun (Zaman sınırı)", 
+            "Yerçekimi yok (Sıfır yerçekimi)", 
+            "Sadece fare (mouse) ile oynanabilir", 
+            "HUD (Arayüz) hiç yok", 
+            "Dost ateşi (Friendly Fire) her zaman açık","Karakterin görünmez ama ses çıkarıyor", 
+            "Karakterin bir eşya (Canlı değil)", 
+            "Karakter sürekli yaşlanıyor","Oyunun sonundan başına doğru ilerliyor", 
+            "Dünya sadece müzik ritmine göre hareket ediyor", 
+            "Grafikler ASCII (Yazı karakterleri) sanatından oluşmalı",
+            "Ekran sürekli dönüyor","Renkler duygulara göre değişmeli"
         ]
 
     def generate_embed(self):

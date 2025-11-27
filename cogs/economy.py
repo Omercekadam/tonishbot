@@ -288,6 +288,18 @@ class Economy(commands.Cog):
             await db.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
             await db.commit()
 
+    @commands.command(name="bakiyeguncelle")
+    @commands.has_permissions(administrator=True)
+    async def bakiyeguncelle(self, ctx, member: discord.Member, amount: int):
+        """Belirtilen kullanıcının bakiyesini 'amount' kadar artırır/azaltır. (Yönetici komutu)"""
+        
+        # Önce güncelle
+        await self.update_balance(member.id, amount)
+        # Sonra yeni bakiyeyi al
+        new_balance = await self.get_balance(member.id)
+        
+        await ctx.send(f"✅ {member.display_name} kullanıcısının yeni bakiyesi: **{new_balance}** tonish coin 💸")
+
     @commands.command()
     async def bakiye(self, ctx, member: discord.Member = None):
         member = member or ctx.author
