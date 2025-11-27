@@ -339,7 +339,7 @@ class Steam(commands.Cog):
                 return await ctx.send("Kullanıcının hiç oyunu yok veya gizlilik ayarları kapalı.")
 
             # En çok oynanan 20 oyunu al (API limitleri ve hız için 50 yerine 20)
-            top_games = sorted(games, key=lambda x: x.get('playtime_forever', 0), reverse=True)[:20]
+            top_games = sorted(games, key=lambda x: x.get('playtime_forever', 0), reverse=True)[:30]
             
             genre_counts = {}
             
