@@ -256,8 +256,17 @@ class General(commands.Cog):
             color=discord.Color.dark_gold() 
         )
 
-        embed.add_field(name="👑 Başkan", value="Yurdakul Efe Arıkan", inline=True)
-        embed.add_field(name="🤝 Başkan Yardımcısı", value="Ömer Soysal", inline=True)
+        embed.add_field(
+            name="👑 Başkan",
+            value="Yurdakul Efe Arıkan",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🤝 Başkan Yardımcısı",
+            value="Ömer Soysal",
+            inline=True
+        )
 
         embed.add_field(
             name="🏛️ Yönetim Kurulu Üyeleri",
@@ -265,33 +274,77 @@ class General(commands.Cog):
             inline=False
         )
 
-        # Bu satır araya görünmez boşluk atar
-        embed.add_field(name="\u200b", value="\u200b", inline=False) 
+        embed.add_field(
+            name="📅 Organizasyon Koordinatörü",
+            value="İbrahim Ata Gültekin",
+            inline=True
+        )
 
-        # KOORDİNATÖRLER
-        embed.add_field(name="📅 Organizasyon Koord.", value="İbrahim Ata Gültekin", inline=True)
-        embed.add_field(name="🌍 Dış İlişkiler Koord.", value="Kerem Çetin", inline=True)
-        embed.add_field(name="📱 Sosyal Medya Koord.", value="Muhammed Alper Kuvar", inline=True)
+        embed.add_field(
+            name="🌍 Dış İlişkiler Koordinatörü",
+            value="Kerem Çetin",
+            inline=True
+        )
 
-        #SORUMLULAR GRUP 1
-        embed.add_field(name="💰 Sponsorluk Sorumlusu", value="Kaan Mersin", inline=True)
-        embed.add_field(name="📣 İletişim Sorumlusu", value="Ömer Çelik", inline=True)
-        embed.add_field(name="👾 Game Jam Sorumlusu", value="Oğulcan Danişment", inline=True)
+        embed.add_field(
+            name="📱 Sosyal Medya Koordinatörü",
+            value="Muhammed Alper Kuvar",
+            inline=True
+        )
 
-        # BOŞLUK
-        embed.add_field(name="\u200b", value="\u200b", inline=False)
+        embed.add_field(
+            name="💰 Sponsorluk Sorumlusu",
+            value="Kaan Mersin",
+            inline=True
+        )
 
-        #SORUMLULAR GRUP 2
-        embed.add_field(name="🛠️ Workshop Sorumlusu", value="Yağmur Güven\nYaren Er", inline=True)
-        embed.add_field(name="🎨 Tasarımcı - Editör", value="Beyzanur Boduroğlu\nYusuf Dervent", inline=True)
-        embed.add_field(name="✍️ İçerik Üreticisi", value="Ebru Karademir", inline=True)
+        embed.add_field(
+            name="📣 İletişim Sorumlusu",
+            value="Ömer Çelik",
+            inline=True
+        )
 
-        #TEKNİK & DISCORD
-        embed.add_field(name="🎥 Kameraman", value="Feyzanur Sarı", inline=True)
-        embed.add_field(name="💬 Discord Sorumlusu", value="Yusuf Dervent", inline=True)
-        embed.add_field(name="🎉 Etkinlik Görevlileri", value="Bahadır Bildiren\nSudenaz Çolak\nYusuf Çınar Üstal", inline=True)
+        embed.add_field(
+            name="👾 Game Jam Sorumlusu",
+            value="Oğulcan Danişment",
+            inline=True
+        )
 
-        
+        embed.add_field(
+            name="🛠️ Workshop Sorumlusu",
+            value="Yağmur Güven\nYaren Er",
+            inline=True
+        )
+
+        embed.add_field(
+            name="🎨 Tasarımcı - Editör",
+            value="Beyzanur Boduroğlu\nYusuf Dervent",
+            inline=True
+        )
+
+        embed.add_field(
+            name="✍️ İçerik Üreticisi",
+            value="Ebru Karademir",
+            inline=True
+        )
+
+        embed.add_field(
+            name="🎥 Kameraman",
+            value="Feyzanur Sarı",
+            inline=True
+        )
+
+        embed.add_field(
+            name="💬 Discord Sorumlusu",
+            value="Yusuf Dervent",
+            inline=True
+        )
+        embed.add_field(
+            name="🎉 Etkinlik Görevlileri",
+            value="Bahadır Bildiren\nSudenaz Çolak\nYusuf Çınar Üstal",
+            inline=False
+        )
+
         embed.set_footer(text=f"{ctx.guild.name} Yönetim Kadrosu")
         
         await ctx.send(embed=embed)
