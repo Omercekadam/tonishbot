@@ -88,6 +88,47 @@ class General(commands.Cog):
             "**!liderlik:**\n🏆Tonishcoin kazandığınızda sunucudaki liderlik tablosunu görebileceğiniz komut.\n"
         )
         await ctx.send(message_content)
+
+    @commands.command(name="ekonomi", aliases=["eco","economi","liderlikbilgi","ekonomibilgi"])
+    async def ekonomi(ctx):
+        """Ekonomi sistemiyle ilgili temel komutları listeler."""
+        
+        embed = discord.Embed(
+            title="💰 Ekonomi Komutları 💰",
+            description="Sunucudaki tonish coin sistemini yönetmek ve kullanmak için gereken tüm komutlar:",
+            color=discord.Color.green()
+        )
+        
+        embed.add_field(
+            name="!bakiye (veya !tonishcoin, !cuzdan)",
+            value="Kendi bakiyeni veya etiketlediğin birinin bakiyesini kontrol edersin.\n"
+                "**Kullanım:** `!bakiye` veya `!bakiye @kullanıcı`",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="!gunluk",
+            value="Her 24 saatte bir **50 tonish coin** hediye almanı sağlar. \n"
+                "Günün ödülünü almayı unutma!",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="!liderlik (veya !top, !zenginler, !leaderboard)",
+            value="Sunucudaki en zengin 5 kişinin görsel liderlik tablosunu gösterir. \n"
+                "Her ayın 1'inde bu tablo sıfırlanır ve o ayın kazananlarına sürpriz ödüller verilir. ",
+            inline=False
+        )
+        
+        embed.add_field(
+            name="Oyun Oynamak İster misin?",
+            value="Blackjack ve Slot oyunlarının kurallarını öğrenmek için `!oyun` komutunu kullanabilirsin.",
+            inline=False
+        )
+        
+        embed.set_footer(text=f"{ctx.guild.name} Ekonomi Sistemi")
+        await ctx.send(embed=embed)
+
     @commands.command()
     async def steam(self, ctx):
 
