@@ -51,7 +51,7 @@ class General(commands.Cog):
             inline=True
         )
 
-        embed.set_footer(text=f"{ctx.guild.name} Nishdot")
+        embed.set_footer(text=f"{ctx.guild.name} Linkler")
         
         await ctx.send(embed=embed)
 
