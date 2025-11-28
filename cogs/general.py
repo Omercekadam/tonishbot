@@ -90,7 +90,7 @@ class General(commands.Cog):
         await ctx.send(message_content)
 
     @commands.command(name="ekonomi", aliases=["eco","economi","liderlikbilgi","ekonomibilgi"])
-    async def ekonomi(ctx):
+    async def ekonomi(self, ctx):
         """Ekonomi sistemiyle ilgili temel komutları listeler."""
         
         embed = discord.Embed(
