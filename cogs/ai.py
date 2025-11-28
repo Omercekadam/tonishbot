@@ -97,15 +97,13 @@ class AI(commands.Cog):
                 chunks.append(text)
                 break
             
-            # Limitten önceki son boşluğu bul
             split_index = text.rfind(' ', 0, limit)
             
-            # Eğer hiç boşluk yoksa (çok uzun tek kelime vb.), mecburen limitten kes
             if split_index == -1:
                 split_index = limit
             
             chunks.append(text[:split_index])
-            text = text[split_index:].lstrip() # Kalan kısımdaki baştaki boşluğu temizle
+            text = text[split_index:].lstrip() 
             
         return chunks
 
@@ -142,11 +140,9 @@ class AI(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         """Bot etiketlendiğinde çalışır."""
-        if message.author.bot: return # Botları yoksay
+        if message.author.bot: return 
         
-        # Eğer bot etiketlenmişse (ve mesaj bir yanıt değilse veya yanıtlanan bot ise)
         if self.bot.user in message.mentions and message.content.strip() != f"<@{self.bot.user.id}>":
-            # Etiket kısmını temizle
             prompt = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
             if prompt:
                 await self._generate_ai_response(message.channel, message.author.id, prompt)
@@ -188,7 +184,6 @@ class AI(commands.Cog):
                 f"3. Samimi ve heyecanlı bir dille, emoji kullanarak listele."
             )
             try:
-                # Tek seferlik içerik üretimi için generate_content_async kullanıyoruz
                 response = await self.model.generate_content_async(prompt)
                 cevap = response.text
                 
