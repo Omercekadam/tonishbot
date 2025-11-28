@@ -4,27 +4,23 @@ import asyncio
 from discord.ext import commands
 from dotenv import load_dotenv
 
-# .env dosyasındaki gizli bilgileri (Token vb.) yükle
 load_dotenv()
 
-# Sabitler ve Ayarlar
-# Token ve ID'leri ortam değişkenlerinden alıyoruz
 TOKEN = os.getenv('DISCORD_TOKEN')
 CEK_DISCORD_ID = int(os.getenv('CEK_DISCORD_ID', 0))
 
-# Intent Ayarları (Botun neleri görebileceği)
 intents = discord.Intents.default()
-intents.members = True # Üye giriş/çıkışlarını görmek için
-intents.message_content = True # Mesajların içeriğini okumak için
+intents.members = True 
+intents.message_content = True 
 
 class TonishBot(commands.Bot):
     def __init__(self):
         super().__init__(
-            command_prefix="!", # Komutların başındaki işaret (örn: !yardim)
+            command_prefix="!", 
             intents=intents,
-            help_command=None # Varsayılan yardım komutunu kapat (Kendimiz yazdık)
+            help_command=None 
         )
-        self.cek_id = CEK_DISCORD_ID # Bot sahibinin ID'sini kaydet
+        self.cek_id = CEK_DISCORD_ID 
 
     async def setup_hook(self):
         """
@@ -51,13 +47,10 @@ class TonishBot(commands.Bot):
         print(f'ID: {self.user.id}')
         print('------')
 
-# Bot nesnesini oluştur
 bot = TonishBot()
 
-# Ana çalışma bloğu
 if __name__ == "__main__":
     if not TOKEN:
         print("HATA: DISCORD_TOKEN bulunamadı. .env dosyasını kontrol edin.")
     else:
-        # Botu çalıştır
         bot.run(TOKEN)
