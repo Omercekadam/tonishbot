@@ -8,6 +8,9 @@ from datetime import datetime, time, timezone
 from PIL import Image, ImageDraw, ImageFont
 
 DB_PATH = "economy.db"
+LEADERBOARD_BG = "liderlik_bg.png"
+FONT_BOLD = "Roboto-Bold.ttf"
+FONT_REGULAR = "Roboto-Regular.ttf"
 
 KART_DEGERLERI = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
@@ -395,99 +398,117 @@ class Economy(commands.Cog):
         
         view.message = message
 
+    def create_circular_mask(self, size):
+        mask = Image.new("L", size, 0)
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((0, 0) + size, fill=255)
+        return mask
+
     def generate_leaderboard_image(self, users_data):
         """
         Liderlik tablosu için görsel oluşturur.
-        users_data: [(sıra, kullanıcı_adı, bakiye, avatar_bytes), ...]
+        users_data: [(rank, user_display_name, balance, avatar_bytes), ...]
         """
-        # Arka planı yükle veya oluştur
         try:
-            background = Image.open("liderlik_bg.png").convert("RGBA")
-        except:
-            # Arka plan yoksa düz renk oluştur
-            background = Image.new("RGBA", (800, 600), (44, 47, 51, 255))
+            bg = Image.open(LEADERBOARD_BG).convert("RGBA")
+        except Exception as e:
+            print(f"Arkaplan yüklenemedi: {e}")
+            bg = Image.new("RGBA", (800, 600), (44, 47, 51, 255))
 
-        draw = ImageDraw.Draw(background)
+        draw = ImageDraw.Draw(bg)
+
+        try:
+            font_isim = ImageFont.truetype(FONT_BOLD, 36)
+            font_bakiye = ImageFont.truetype(FONT_REGULAR, 28)
+            font_rank = ImageFont.truetype(FONT_BOLD, 40)
+        except IOError:
+            font_isim = ImageFont.load_default()
+            font_bakiye = ImageFont.load_default()
+            font_rank = ImageFont.load_default()
+
+        # Koordinatlar
+        current_y = 150 
+        y_step = 100 
+        rank_x = 50      
+        avatar_x = 120   
+        name_x = 270     
+        balance_x = 270 
+        avatar_size = (80, 80)
         
-        # Fontları yükle
-        try:
-            title_font = ImageFont.truetype("Roboto-Bold.ttf", 60)
-            text_font = ImageFont.truetype("Roboto-Regular.ttf", 40)
-            rank_font = ImageFont.truetype("Roboto-Bold.ttf", 50)
-        except:
-            title_font = ImageFont.load_default()
-            text_font = ImageFont.load_default()
-            rank_font = ImageFont.load_default()
+        mask = self.create_circular_mask(avatar_size)
 
-        # Başlık
-        draw.text((400, 50), "LİDERLİK TABLOSU", font=title_font, fill="white", anchor="mm")
-
-        start_y = 150
         for rank, username, balance, avatar_bytes in users_data:
-            # Sıra numarası
-            draw.text((50, start_y + 35), f"#{rank}", font=rank_font, fill="#FFD700" if rank == 1 else "white")
-
-            # Avatar
+            # Avatar İşlemleri
             if avatar_bytes:
                 try:
-                    avatar = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
-                    avatar = avatar.resize((70, 70))
-                    # Yuvarlak maske
-                    mask = Image.new("L", (70, 70), 0)
-                    draw_mask = ImageDraw.Draw(mask)
-                    draw_mask.ellipse((0, 0, 70, 70), fill=255)
-                    background.paste(avatar, (120, start_y), mask)
-                except:
-                    pass # Avatar yüklenemezse boş geç
+                    avatar_img = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
+                    avatar_img = avatar_img.resize(avatar_size)
+                    bg.paste(avatar_img, (avatar_x, current_y), mask)
+                except Exception as e:
+                    print(f"Avatar işleme hatası: {e}")
+            
+            # Yazı İşlemleri
+            draw.text((rank_x, current_y + 15), f"#{rank}", font=font_rank, fill="#F4E400") 
+            draw.text((name_x, current_y + 5), str(username), font=font_isim, fill="#171717")
+            draw.text((balance_x, current_y + 45), f"{balance} tonish coin", font=font_bakiye, fill="#171717")
 
-            # Kullanıcı adı ve Bakiye
-            draw.text((210, start_y + 15), str(username), font=text_font, fill="white")
-            draw.text((600, start_y + 15), f"{balance} Coin", font=text_font, fill="#00FF00")
+            current_y += y_step
 
-            start_y += 90
-
-        # ByteIO'ya kaydet
         buffer = io.BytesIO()
-        background.save(buffer, format="PNG")
+        bg.save(buffer, format="PNG")
         buffer.seek(0)
         return buffer
 
-    @commands.command()
-    async def liderlik(self, ctx):
-        """En zengin 5 kullanıcıyı görsel olarak listeler."""
-        async with ctx.typing():
+    @commands.command(name="liderlik", aliases=["zenginler", "top", "leaderboard"])
+    async def leaderboard(self, ctx):
+        """tonish coin liderlik tablosunu GÖRSEL olarak oluşturur."""
+        
+        loading_msg = await ctx.send("Liderlik tablosu oluşturuluyor... 🎨")
+
+        try:
+            # 1. Veritabanından ilk 5 kişiyi çek
             async with aiosqlite.connect(DB_PATH) as db:
                 async with db.execute("SELECT user_id, balance FROM economy ORDER BY balance DESC LIMIT 5") as cursor:
                     rows = await cursor.fetchall()
-            
-            if not rows: return await ctx.send("Liste boş.")
-            
+
+            if not rows:
+                await loading_msg.edit(content="Henüz liderlik tablosunda kimse yok.")
+                return
+
+            # 2. Verileri Hazırla (Avatar indirme vs. async yapılmalı)
             users_data = []
             for i, (uid, bal) in enumerate(rows, 1):
-                user = self.bot.get_user(uid)
-                if not user:
-                    try:
-                        user = await self.bot.fetch_user(uid)
-                    except:
-                        user = None
-                
-                username = user.display_name if user else "Bilinmeyen Kullanıcı"
-                
-                # Avatarı indir
-                avatar_bytes = None
-                if user and user.avatar:
-                    try:
-                        avatar_bytes = await user.avatar.read()
-                    except:
-                        pass
+                try:
+                    user = await self.bot.fetch_user(uid)
+                    username = user.display_name
+                    
+                    avatar_bytes = None
+                    if user.display_avatar:
+                        try:
+                            avatar_bytes = await user.display_avatar.read()
+                        except:
+                            pass
+                except discord.NotFound:
+                    username = "Bilinmeyen Kullanıcı"
+                    avatar_bytes = None
+                except Exception as e:
+                    print(f"Kullanıcı getirme hatası {uid}: {e}")
+                    username = "Hata"
+                    avatar_bytes = None
                 
                 users_data.append((i, username, bal, avatar_bytes))
 
-            # Görseli asenkron olarak oluştur
+            # 3. Resmi Oluştur (Bloklayan işlem olduğu için executor'da çalıştır)
             buffer = await self.bot.loop.run_in_executor(None, self.generate_leaderboard_image, users_data)
-            
+
+            # 4. Gönder
             file = discord.File(buffer, filename="liderlik.png")
             await ctx.send(file=file)
+            await loading_msg.delete()
+
+        except Exception as e:
+            print(f"Liderlik tablosu hatası: {e}")
+            await loading_msg.edit(content=f"Bir hata oluştu: {e}")
 
     @tasks.loop(time=time(0, 5, tzinfo=timezone.utc))
     async def monthly_check(self):

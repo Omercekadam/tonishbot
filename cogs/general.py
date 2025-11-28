@@ -8,7 +8,6 @@ from datetime import datetime
 class General(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        # Kanal ID'lerini ortam değişkenlerinden alıyoruz
         self.admin_command_channel_id = int(os.getenv('ADMIN_COMMAND_CHANNEL_ID', 0))
         self.announcement_channel_id = int(os.getenv('ANNOUNCEMENT_CHANNEL_ID', 0))
         self.event_counter_channel_id = int(os.getenv('EVENT_COUNTER_CHANNEL_ID', 0))
@@ -19,7 +18,7 @@ class General(commands.Cog):
         Sosyal medya linklerini paylaşan komut.
         Kullanım: !link
         """
-        # Linkleri değişkenlere ata
+
         uyeolma_link = "https://sks.nisantasi.edu.tr/uye-talep"
         instagram_link = "https://www.instagram.com/nishdott"
         linkedin_link = "https://www.linkedin.com/company/nishdot/about"
@@ -27,17 +26,34 @@ class General(commands.Cog):
         discord_link = "https://discord.gg/ddumxQaG"
         youtube_link = "https://www.youtube.com/@nishdot"
 
-        # Mesaj içeriğini oluştur
-        message_content = (
-            f"**Sosyal medya hesaplarımız:**\n\n"
-            f"**Kulübümüze üye olmak için:** <{uyeolma_link}>\n"
-            f"**İnstagram:** <{instagram_link}>\n"
-            f"**Whatsapp:** <{whatsapp_link}>\n"
-            f"**Linkedin:** <{linkedin_link}>\n"
-            f"**Discord:** <{discord_link}>\n"
-            f"**Youtube:** <{youtube_link}>\n"
+        embed = discord.Embed(
+            title="📱 Nishdot Sosyal Medya ve İletişim",
+            description="Kulübümüze ait tüm resmi hesaplara ve üyelik formuna aşağıdan ulaşabilirsiniz.",
+            color=discord.Color.orange() 
         )
-        await ctx.send(message_content)
+
+        embed.add_field(
+            name="📝 Üyelik",
+            value=f"Kulübümüze resmen üye olmak için:\n👉 **[Başvuru Formuna Git]({uyeolma_link})**",
+            inline=False
+        )
+        embed.add_field(
+            name="🌐 Sosyal Medya",
+            value=f"📸 **[Instagram]({instagram_link})**\n"
+                  f"💼 **[LinkedIn]({linkedin_link})**\n"
+                  f"▶️ **[YouTube]({youtube_link})**",
+            inline=True
+        )
+        embed.add_field(
+            name="💬 İletişim & Topluluk",
+            value=f"📞 **[WhatsApp]({whatsapp_link})**\n"
+                  f"👾 **[Discord]({discord_link})**",
+            inline=True
+        )
+
+        embed.set_footer(text=f"{ctx.guild.name} Nishdot")
+        
+        await ctx.send(embed=embed)
 
     @commands.command()
     async def bilgi(self, ctx):
@@ -60,34 +76,85 @@ class General(commands.Cog):
         Botun komutlarını listeleyen yardım menüsü.
         Kullanım: !yardim
         """
-        message_content = (
-            "**Tonishbot Komutları:**\n\n"
-            "**@Tonish:**🤖Tonish'in yapay zekası ile konuşmak ve onunla etkileşime geçmek için @Tonish yazarak onu etiketleyip sohbet edebilirsiniz.\n\n"
-            "**!link:**\n📱Nishdot'un tüm hesaplarına ulaşmak için kullanabileceğiniz komut.\n\n"
-            "**!oyun:**\n🎰Tonishbot üzerinden oynayıp sunucunun sanal ekonomisine dahil olabileceğiniz eğlenceli oyunları görebileceğiniz komut.\n\n"
-            "**!ekonomi:**\n💸Tonishbot üzerinden sunucumuzda oynadığınız oyunlar ile kazandığınız coinleri ve liderlik tablosunu görebileceğiniz komut.\n\n" 
-            "**!yk:**\n👨‍💼👩‍💼Nishdot yönetim kurulunu görüntülemek için kullanabileceğiniz komut.\n\n"
-            "**!steam:**\n🖤Tonish'in Steam entegrasyonu ile kullanabileceğiniz havalı komutlar.\n\n"
-            "**!oyunfikri:**\n💭'Ne yapsak?' diye düşündüğünüzde ya da sadece ufak fikirler üretmek istediğinizde size binlerce farklı kombinasyon üreterek oyun fikri üretebileceğiniz bir makine yaratır.\n\n"
-            "**!benzeroner [oyun adı]:**\n🎮Tonish bahsettiğiniz oyunu baz alarak size oynayabileceğiniz 3 adet farklı oyun önerir. "
+        
+        embed = discord.Embed(
+            title="🤖 Tonishbot Komutları",
+            description="Tonishbot ile kullanabileceğiniz tüm temel komutlar aşağıda listelenmiştir.",
+            color=discord.Color.blue()
         )
-        await ctx.send(message_content)
+        embed.add_field(
+            name="🤖 @Tonish",
+            value="Tonish'in yapay zekası ile konuşmak ve onunla etkileşime geçmek için @Tonish yazarak onu etiketleyip sohbet edebilirsiniz.",
+            inline=False
+        )
+        embed.add_field(
+            name="📱 !link",
+            value="Nishdot'un tüm hesaplarına ulaşmak için kullanabileceğiniz komut.",
+            inline=False
+        )
+        embed.add_field(
+            name="🎰 !oyun",
+            value="Tonishbot üzerinden oynayıp sunucunun sanal ekonomisine dahil olabileceğiniz eğlenceli oyunları görebileceğiniz komut.",
+            inline=False
+        )
+        embed.add_field(
+            name="💸 !ekonomi",
+            value="Tonishbot üzerinden sunucumuzda oynadığınız oyunlar ile kazandığınız coinleri ve liderlik tablosunu görebileceğiniz komut.",
+            inline=False
+        )
+        embed.add_field(
+            name="👨‍💼👩‍💼 !yk",
+            value="Nishdot yönetim kurulunu görüntülemek için kullanabileceğiniz komut.",
+            inline=False
+        )
+        embed.add_field(
+            name="🖤 !steam",
+            value="Tonish'in Steam entegrasyonu ile kullanabileceğiniz havalı komutlar.",
+            inline=False
+        )
+        embed.add_field(
+            name="💭 !oyunfikri",
+            value="'Ne yapsak?' diye düşündüğünüzde ya da sadece ufak fikirler üretmek istediğinizde size binlerce farklı kombinasyonla oyun fikri üretebileceğiniz bir makine yaratır.",
+            inline=False
+        )
+        embed.add_field(
+            name="🎮 !benzeroner [oyun adı]",
+            value="Tonish bahsettiğiniz oyunu baz alarak size oynayabileceğiniz 3 adet farklı oyun önerir.",
+            inline=False
+        )
+
+        embed.set_footer(text=f"{ctx.guild.name} Yardım Menüsü")
+        
+        await ctx.send(embed=embed)
 
     @commands.command()
     async def oyun(self,ctx):
         """
         Tonishbot üzerinden oynanan oyunların bilgisini veren komut"""
 
-        message_content = (
-            "**Tonish üzerinden oyun oynarak Tonishcoin kazanabileceğiniz ve sunucu ekonomisine katılabileceğiniz komutlar.**\n\n"
-            "**!blackjack ya da !bj:**\n♠️Blackjack oynayabileceğiniz komut.\n"
-            "**!slot:**\n🎰Slot oynayabileceğiniz komut.\n"
-            "**!zar[zar yüzeyi]:**\n🎲Zar oynayabileceğiniz komut tonishcoin ile alakası yok.\n"
-            "**!bakiye:**\n💵Bankada ne kadar Tonishcoininiz olduğunu görmek için kullanabileceğiniz komut.\n"
-            "**!gunluk:**\n💰Günlük Tonishcoin kazanabileceğiniz komut.\n"
-            "**!liderlik:**\n🏆Tonishcoin kazandığınızda sunucudaki liderlik tablosunu görebileceğiniz komut.\n"
+        embed = discord.Embed(
+            title="🎮Oyun Komutları🕹️",
+            description="Tonish üzerinden oyun oynarak Tonishcoin kazanabileceğiniz ve sunucu ekonomisine katılabileceğiniz komutlar.",
+            color=discord.Color.pink()
         )
-        await ctx.send(message_content)
+        
+        embed.add_field(
+            name="!blackjack ya da !bj",
+            value="♠️Blackjack oynayabileceğiniz komut.",
+            inline=False
+        )
+        embed.add_field(
+            name="!slot",
+            value="🎰Bir slot makinesi yaratıp slot oynayabileceğiniz komut.",
+            inline=False
+        )
+        embed.add_field(
+            name="!ekonomi",
+            value="💰Sunucudaki ekonomi sistemi hakkında bilgi alabileceğiniz komut.",
+            inline=False
+        )
+        embed.set_footer(text=f"{ctx.guild.name} Oyun Sistemi")
+        await ctx.send(embed=embed)
 
     @commands.command(name="ekonomi", aliases=["eco","economi","liderlikbilgi","ekonomibilgi"])
     async def ekonomi(self, ctx):
@@ -98,28 +165,24 @@ class General(commands.Cog):
             description="Sunucudaki tonish coin sistemini yönetmek ve kullanmak için gereken tüm komutlar:",
             color=discord.Color.green()
         )
-        
         embed.add_field(
             name="!bakiye (veya !tonishcoin, !cuzdan)",
             value="Kendi bakiyeni veya etiketlediğin birinin bakiyesini kontrol edersin.\n"
                 "**Kullanım:** `!bakiye` veya `!bakiye @kullanıcı`",
             inline=False
-        )
-        
+        )       
         embed.add_field(
             name="!gunluk",
             value="Her 24 saatte bir **50 tonish coin** hediye almanı sağlar. \n"
                 "Günün ödülünü almayı unutma!",
             inline=False
-        )
-        
+        )    
         embed.add_field(
             name="!liderlik (veya !top, !zenginler, !leaderboard)",
             value="Sunucudaki en zengin 5 kişinin görsel liderlik tablosunu gösterir. \n"
                 "Her ayın 1'inde bu tablo sıfırlanır ve o ayın kazananlarına sürpriz ödüller verilir. ",
             inline=False
-        )
-        
+        )    
         embed.add_field(
             name="Oyun Oynamak İster misin?",
             value="Blackjack ve Slot oyunlarının kurallarını öğrenmek için `!oyun` komutunu kullanabilirsin.",
@@ -131,44 +194,162 @@ class General(commands.Cog):
 
     @commands.command()
     async def steam(self, ctx):
+        """Tonish'in Steam entegrasyonu komutlarını listeler."""
 
-        message_content = (
-            "**Tonish'in Steam entegrasyonu ile kullanabileceğiniz komutlar:**\n\n"
-            "**‼️Önemli Not‼️:**\nSteam hesabınızı eşleştirebilmek için Steam hesabınızdaki gizlilik ayarlarınızın 'Oyun Detayları' ve 'Envanter' kısımlarının herkese açık olması gerekmektedir. `Steam`>`Ayarlar`>`Gizlilik Ayarları` kısmından güncelleyebilirsiniz.\n\n"
-            "**!steam_bagla:**\n⛓️Steam hesabınızı Tonish ile eşleştirmek için kullanılır.Örnek: `!steam_bagla https://steamcommunity.com/id/kullaniciadi` veya `!steam_bagla 76561198000000000`\n\n"
-            "**!oyunsuresi:**\n🕧Sunucudaki kullanıcıların son 2 haftada toplam Steamde oynadıkları oyun süresini listeler.\n\n"
-            "**!ortak:**\n👥Etiketlediğiniz kullanıcının Steam hesabı ile sizin Steam hesabınızdaki oynayabileceğiniz ortak oyunlar arasında size rastgele bir oyun önerir.Örnek: `!ortak @kullanici`\n\n"
-            "**!kimoyunda:**\n🟢Sunucuda daha önce profilini eşlemiş kullanıcıların anlık olarak ne oynadığını listeler.\n\n"
-            "**!kart:**\n🪪Steam hesabınızı analiz edip oyuncu profilinize göre size bir Gamer Kart oluşturur.\n\n"
-            "**!analiz:**\n🧬Steam hesabınızı analiz edip size göre bir Gamer DNA oluşturur.\n\n"
+        embed = discord.Embed(
+            title="🎮 Steam Entegrasyon Komutları 🎮",
+            description="Tonish ile Steam hesabınızı bağlayarak kullanabileceğiniz sosyal ve analitik komutlar.",
+            color=0x1b2838 
         )
-        await ctx.send(message_content)
+        embed.add_field(
+            name="**‼️ Önemli Not ‼️**",
+            value="Steam hesabınızı eşleştirebilmek için gizlilik ayarlarınızdaki **'Oyun Detayları'** ve **'Envanter'** kısımlarının **herkese açık** olması gerekmektedir.\n`Steam` > `Ayarlar` > `Gizlilik Ayarları` kısmından güncelleyebilirsiniz.",
+            inline=False
+            )
+        embed.add_field(
+            name="!steam_bagla",
+            value="⛓️ Steam hesabınızı Tonish ile eşleştirmek için kullanılır.\n**Örnek:** `!steam_bagla https://steamcommunity.com/id/kullaniciadi` veya `!steam_bagla 76561198000000000` (Tip:Steam profilinize girdikten sonra üst kısımda gözüken bağlantının üzerine tıklayarak linkinizi alabilirsiniz.)",
+            inline=False
+            )
+        embed.add_field(
+            name="!oyunsuresi",
+            value="🕧 Sunucudaki kullanıcıların son 2 haftada toplam Steam'de oynadıkları oyun süresini listeler.",
+            inline=False
+            )
+        embed.add_field(
+            name="!ortak",
+            value="👥 Etiketlediğiniz kullanıcının Steam hesabı ile sizin hesabınızdaki ortak oyunlar arasından rastgele bir oyun önerir.\n**Örnek:** `!ortak @kullanici`",
+            inline=False
+            )
+        embed.add_field(
+            name="!kimoyunda",
+            value="🟢 Sunucuda profilini eşlemiş kullanıcıların anlık olarak hangi oyunda olduğunu listeler.",
+            inline=False
+            )
+
+        embed.add_field(
+            name="!kart",
+            value="🪪 Steam hesabınızı analiz edip oyuncu profilinize göre size görsel bir Gamer Kart oluşturur.",
+            inline=False
+            )
+
+        embed.add_field(
+            name="!analiz",
+            value="🧬 Steam hesabınızı analiz edip oyun zevkinize göre bir Gamer DNA grafiği oluşturur.",
+            inline=False
+            )
+
+        embed.set_footer(text=f"{ctx.guild.name} Steam Sistemi")
+        
+        await ctx.send(embed=embed)
 
     @commands.command()
     async def yk(self, ctx):
         """
-        Yönetim kurulu listesini gösterir.
+        Nishdot yönetim kurulu listesini gösterir.
         Kullanım: !yk
         """
-        message_content = (
-            "**Nishdot Yönetim Kurulu:**\n\n\n"
-            "**Başkan:** \nYurdakul Efe Arıkan\n\n"
-            "**Başkan Yardımcısı:** \nÖmer Soysal\n\n"
-            "**Yönetim Kurulu:** \nYurdakul Efe Arıkan\nÖmer Soysal\nMehmet Boran Bulut\nEbru Karademir\nOğulcan Danişment\n\n"
-            "**Organizasyon Koordinatörü:** \nİbrahim Ata Gültekin\n\n"
-            "**Workshop Sorumlusu:** \nYağmur Güven\nYaren Er\n\n"
-            "**Game Jam Sorumlusu:** \nOğulcan Danişment\n\n"
-            "**Etkinlik Görevlileri:** \nBahadır Bildiren\nSudenaz Çolak\nYusuf Çınar Üstal\n\n"
-            "**Dış İlişkiler Koordinatörü:** \nKerem Çetin\n\n"
-            "**Sponsorluk Sorumlusu:** \nKaan Mersin\n\n"
-            "**İletişim Sorumlusu:** \nÖmer Çelik\n\n"
-            "**Sosyal Medya Koordinatörü:** \nMuhammed Alper Kuvar\n\n"
-            "**Tasarımcı - Editör:** \nBeyzanur Boduroğlu\nYusuf Dervent\n\n"
-            "**Kameraman:** \nFeyzanur Sarı\n\n"
-            "**İçerik Üreticisi:** \nEbru Karademir\n\n"
-            "**Discord Sorumlusu:** \nYusuf Dervent\n\n"
+        
+        embed = discord.Embed(
+            title="👔 Nishdot Yönetim Kurulu",
+            description="Kulübümüzün idari, yönetim ve etkinlik kadrosu aşağıdadır.",
+            color=discord.Color.dark_gold() 
         )
-        await ctx.send(message_content)
+
+        embed.add_field(
+            name="👑 Başkan",
+            value="Yurdakul Efe Arıkan",
+            inline=True
+        )
+        
+        embed.add_field(
+            name="🤝 Başkan Yardımcısı",
+            value="Ömer Soysal",
+            inline=True
+        )
+
+        embed.add_field(
+            name="🏛️ Yönetim Kurulu Üyeleri",
+            value="Yurdakul Efe Arıkan\nÖmer Soysal\nMehmet Boran Bulut\nEbru Karademir\nOğulcan Danişment",
+            inline=False
+        )
+
+        embed.add_field(
+            name="📅 Organizasyon Koordinatörü",
+            value="İbrahim Ata Gültekin",
+            inline=True
+        )
+
+        embed.add_field(
+            name="🌍 Dış İlişkiler Koordinatörü",
+            value="Kerem Çetin",
+            inline=True
+        )
+
+        embed.add_field(
+            name="📱 Sosyal Medya Koordinatörü",
+            value="Muhammed Alper Kuvar",
+            inline=True
+        )
+
+        embed.add_field(
+            name="💰 Sponsorluk Sorumlusu",
+            value="Kaan Mersin",
+            inline=True
+        )
+
+        embed.add_field(
+            name="📣 İletişim Sorumlusu",
+            value="Ömer Çelik",
+            inline=True
+        )
+
+        embed.add_field(
+            name="👾 Game Jam Sorumlusu",
+            value="Oğulcan Danişment",
+            inline=True
+        )
+
+        embed.add_field(
+            name="🛠️ Workshop Sorumlusu",
+            value="Yağmur Güven\nYaren Er",
+            inline=True
+        )
+
+        embed.add_field(
+            name="🎨 Tasarımcı - Editör",
+            value="Beyzanur Boduroğlu\nYusuf Dervent",
+            inline=True
+        )
+
+        embed.add_field(
+            name="✍️ İçerik Üreticisi",
+            value="Ebru Karademir",
+            inline=True
+        )
+
+        embed.add_field(
+            name="🎥 Kameraman",
+            value="Feyzanur Sarı",
+            inline=True
+        )
+
+        embed.add_field(
+            name="💬 Discord Sorumlusu",
+            value="Yusuf Dervent",
+            inline=True
+        )
+
+        # Etkinlik Ekibi (En Alt)
+        embed.add_field(
+            name="🎉 Etkinlik Görevlileri",
+            value="Bahadır Bildiren\nSudenaz Çolak\nYusuf Çınar Üstal",
+            inline=False
+        )
+
+        embed.set_footer(text=f"{ctx.guild.name} Yönetim Kadrosu")
+        
+        await ctx.send(embed=embed)
 
     @commands.command()
     @commands.has_permissions(administrator=True) 
