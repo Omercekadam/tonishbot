@@ -61,8 +61,13 @@ class Music(commands.Cog):
             await ctx.send("Zaten bir kanaldayım.")
 
     @commands.command(name="play", aliases=["cal", "p"])
-    async def play_command(self, ctx, *, search: str):
+    async def play_command(self, ctx, *, search: str = None):
         """Müzik çalar."""
+        print(f"[DEBUG] Play komutu çalıştı. Gelen arama: '{search}'")
+        
+        if search is None:
+            return await ctx.send("❌ Lütfen bir şarkı adı veya linki gir! Örnek: `!play tarkan`")
+
         if not ctx.voice_client:
             await ctx.invoke(self.connect_command)
             
@@ -254,6 +259,11 @@ class Music(commands.Cog):
             await db.commit()
             
         await ctx.send(f"🗑️ Playlist silindi: **{name}**")
+
+    @play_command.error
+    async def play_command_error(self, ctx, error):
+        if isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send("❌ Şarkı adı girmeyi unuttun! Kullanım: `!play <şarkı adı veya link>`")
 
 async def setup(bot):
     await bot.add_cog(Music(bot))
