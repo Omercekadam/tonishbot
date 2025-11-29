@@ -77,24 +77,32 @@ class Music(commands.Cog):
         player: wavelink.Player = ctx.voice_client
         player.autoplay = wavelink.AutoPlayMode.partial
 
+        print(f"[DEBUG] Arama yapılıyor: {search}")
         try:
             tracks = await wavelink.Playable.search(search)
+            print(f"[DEBUG] Arama sonucu tipi: {type(tracks)}")
         except Exception as e:
+            print(f"[DEBUG] Arama hatası: {e}")
             return await ctx.send(f"Hata oluştu: {e}")
 
         if not tracks:
+            print("[DEBUG] Şarkı bulunamadı (Liste boş)")
             return await ctx.send("Şarkı bulunamadı.")
 
         if isinstance(tracks, wavelink.Playlist):
+            print(f"[DEBUG] Playlist bulundu: {tracks.name}")
             added = await player.queue.put_wait(tracks)
             await ctx.send(f"🎶 Playlist eklendi: **{tracks.name}** ({added} şarkı)")
         else:
+            print(f"[DEBUG] Şarkı bulundu: {tracks[0].title}")
             track = tracks[0]
             await player.queue.put_wait(track)
             await ctx.send(f"🎵 Kuyruğa eklendi: **{track.title}**")
 
         if not player.playing:
+            print("[DEBUG] Çalma başlatılıyor...")
             await player.play(player.queue.get(), volume=100)
+            print("[DEBUG] Çalıyor.")
 
     @commands.command(name="stop", aliases=["dur", "leave", "cik"])
     async def stop_command(self, ctx):
