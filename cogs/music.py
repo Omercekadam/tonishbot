@@ -97,8 +97,8 @@ class Music(commands.Cog):
 
         print(f"[DEBUG] Arama yapılıyor: {search}")
         try:
-            # YouTube (ytsearch) hata verdiği için YouTube Music (ytmsearch) kullanıyoruz
-            tracks = await wavelink.Playable.search(search, source=wavelink.TrackSource.YouTubeMusic)
+            # YouTube hata verdiği için GEÇİCİ OLARAK SoundCloud kullanıyoruz
+            tracks = await wavelink.Playable.search(search, source=wavelink.TrackSource.SoundCloud)
             print(f"[DEBUG] Arama sonucu tipi: {type(tracks)}")
         except Exception as e:
             print(f"[DEBUG] Arama hatası: {e}")
