@@ -63,16 +63,18 @@ class Music(commands.Cog):
     @commands.command(name="play", aliases=["cal", "p"])
     async def play_command(self, ctx, *, search: str = None):
         """Müzik çalar."""
-        print(f"[DEBUG] Play komutu çalıştı. Gelen arama: '{search}'")
+        print(f"[DEBUG] v3 - Play komutu çalıştı. Gelen arama: '{search}'")
         
         if search is None:
             return await ctx.send("❌ Lütfen bir şarkı adı veya linki gir! Örnek: `!play tarkan`")
 
         if not ctx.voice_client:
+            print("[DEBUG] Bot ses kanalında değil, bağlanmaya çalışıyor...")
             await ctx.invoke(self.connect_command)
             
         if not ctx.voice_client:
-            return
+            print("[DEBUG] Bağlantı başarısız oldu veya ses kanalında değilim. Komut iptal ediliyor.")
+            return await ctx.send("❌ Ses kanalına bağlanamadım. Lütfen bir ses kanalında olduğundan emin ol.")
 
         player: wavelink.Player = ctx.voice_client
         player.autoplay = wavelink.AutoPlayMode.partial
