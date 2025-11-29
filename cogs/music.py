@@ -12,7 +12,7 @@ class Music(commands.Cog):
         self.bot = bot
 
     async def cog_load(self):
-        """Cog yüklendiğinde veritabanını oluştur."""
+        """Cog yüklendiğinde veritabanını oluştur ve Lavalink'e bağlan."""
         async with aiosqlite.connect(DB_PATH) as db:
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS playlists (
@@ -23,9 +23,13 @@ class Music(commands.Cog):
                 )
             """)
             await db.commit()
+            
+        self.bot.loop.create_task(self.connect_nodes())
 
-    async def setup_hook(self):
-        """Bot başladığında Lavalink sunucusuna bağlanır."""
+    async def connect_nodes(self):
+        """Lavalink sunucusuna bağlanır."""
+        await self.bot.wait_until_ready() # Botun hazır olmasını bekle
+        
         node_url = os.getenv("LAVALINK_URL", "http://127.0.0.1:2333")
         password = os.getenv("LAVALINK_PASSWORD", "youshallnotpass")
         
@@ -33,7 +37,11 @@ class Music(commands.Cog):
             wavelink.Node(uri=node_url, password=password)
         ]
         
-        await wavelink.Pool.connect(nodes=nodes, client=self.bot, cache_capacity=100)
+        try:
+            await wavelink.Pool.connect(nodes=nodes, client=self.bot, cache_capacity=100)
+            print(f"[+] Wavelink bağlandı: {node_url}")
+        except Exception as e:
+            print(f"[-] Wavelink bağlantı hatası: {e}")
 
     @commands.Cog.listener()
     async def on_wavelink_node_ready(self, payload: wavelink.NodeReadyEventPayload):
