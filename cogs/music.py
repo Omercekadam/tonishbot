@@ -96,20 +96,33 @@ class Music(commands.Cog):
             return await ctx.send("❌ Lütfen bir şarkı adı veya linki gir! Örnek: `!play tarkan`")
 
         if not ctx.voice_client:
-            print("[DEBUG] Bot ses kanalında değil, bağlanmaya çalışıyor...")
-            await ctx.invoke(self.connect_command)
+            print("[DEBUG] v4 - Bot ses kanalında değil, bağlanmaya çalışıyor...")
+            if not ctx.author.voice:
+                return await ctx.send("❌ Önce bir ses kanalına girmelisin!")
+            
+            channel = ctx.author.voice.channel
+            print(f"[DEBUG] v4 - Hedef kanal: {channel.name} ({channel.id})")
+            
+            try:
+                print("[DEBUG] v4 - Wavelink Player bağlanıyor (channel.connect)...")
+                player = await channel.connect(cls=wavelink.Player)
+                print(f"[DEBUG] v4 - Bağlandı! Player: {player}")
+                await ctx.send(f"🔊 **{channel.name}** kanalına bağlandım.")
+            except Exception as e:
+                print(f"[DEBUG] v4 - Bağlantı hatası: {e}")
+                return await ctx.send(f"❌ Bağlanırken hata oluştu: {e}")
             
         if not ctx.voice_client:
-            print("[DEBUG] Bağlantı başarısız oldu veya ses kanalında değilim. Komut iptal ediliyor.")
-            return await ctx.send("❌ Ses kanalına bağlanamadım. Lütfen bir ses kanalında olduğundan emin ol.")
+            print("[DEBUG] v4 - Bağlantı başarısız oldu (voice_client is None).")
+            return await ctx.send("❌ Ses kanalına bağlanamadım.")
 
         player: wavelink.Player = ctx.voice_client
         player.autoplay = wavelink.AutoPlayMode.partial
 
         print(f"[DEBUG] Arama yapılıyor: {search}")
         try:
-            # Varsayılan olarak YouTube araması yapıyoruz (Server'da plugin kurulu olmalı)
-            tracks = await wavelink.Playable.search(search, source=wavelink.TrackSource.YouTube)
+            # YouTube "Sign in" hatası verdiği için YouTube Music kullanıyoruz (Daha stabil)
+            tracks = await wavelink.Playable.search(search, source=wavelink.TrackSource.YouTubeMusic)
             print(f"[DEBUG] Arama sonucu tipi: {type(tracks)}")
         except Exception as e:
             print(f"[DEBUG] Arama hatası: {e}")
