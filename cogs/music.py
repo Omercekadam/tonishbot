@@ -121,8 +121,9 @@ class Music(commands.Cog):
 
         print(f"[DEBUG] Arama yapılıyor: {search}")
         try:
-            # OAuth açıldığı için artık standart YouTube (ytsearch) kullanabiliriz
-            tracks = await wavelink.Playable.search(search, source=wavelink.TrackSource.YouTube)
+            # YouTube (ytsearch) parser hatası verdiği için YouTube Music (ytmsearch) kullanıyoruz.
+            # OAuth açık olduğu için "Sign in" hatası almayacağız.
+            tracks = await wavelink.Playable.search(search, source=wavelink.TrackSource.YouTubeMusic)
             print(f"[DEBUG] Arama sonucu tipi: {type(tracks)}")
         except Exception as e:
             print(f"[DEBUG] Arama hatası: {e}")
