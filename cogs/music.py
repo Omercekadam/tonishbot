@@ -47,6 +47,22 @@ class Music(commands.Cog):
     async def on_wavelink_node_ready(self, payload: wavelink.NodeReadyEventPayload):
         print(f"Lavalink Node bağlandı: {payload.node.identifier}")
 
+    @commands.Cog.listener()
+    async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload):
+        print(f"[DEBUG] Şarkı başladı: {payload.track.title}")
+        
+    @commands.Cog.listener()
+    async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload):
+        print(f"[DEBUG] Şarkı bitti: {payload.track.title} - Sebep: {payload.reason}")
+
+    @commands.Cog.listener()
+    async def on_wavelink_track_exception(self, payload: wavelink.TrackExceptionEventPayload):
+        print(f"[DEBUG] Şarkı hatası: {payload.exception}")
+
+    @commands.Cog.listener()
+    async def on_wavelink_track_stuck(self, payload: wavelink.TrackStuckEventPayload):
+        print(f"[DEBUG] Şarkı takıldı: {payload.track.title}")
+
     @commands.command(name="connect", aliases=["join", "baglan"])
     async def connect_command(self, ctx):
         """Ses kanalına bağlanır."""
