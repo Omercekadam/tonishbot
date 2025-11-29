@@ -66,14 +66,25 @@ class Music(commands.Cog):
     @commands.command(name="connect", aliases=["join", "baglan"])
     async def connect_command(self, ctx):
         """Ses kanalına bağlanır."""
+        print("[DEBUG] Connect komutu çalıştı.")
         if not ctx.author.voice:
+            print("[DEBUG] Kullanıcı ses kanalında değil.")
             return await ctx.send("Önce bir ses kanalına girmelisin!")
         
         channel = ctx.author.voice.channel
+        print(f"[DEBUG] Hedef kanal: {channel.name} ({channel.id})")
+        
         if not ctx.voice_client:
-            await channel.connect(cls=wavelink.Player)
-            await ctx.send(f"🔊 **{channel.name}** kanalına bağlandım.")
+            try:
+                print("[DEBUG] Wavelink Player bağlanıyor...")
+                player = await channel.connect(cls=wavelink.Player)
+                print(f"[DEBUG] Bağlandı! Player: {player}")
+                await ctx.send(f"🔊 **{channel.name}** kanalına bağlandım.")
+            except Exception as e:
+                print(f"[DEBUG] Bağlantı hatası: {e}")
+                await ctx.send(f"Bağlanırken hata oluştu: {e}")
         else:
+            print("[DEBUG] Zaten bağlı.")
             await ctx.send("Zaten bir kanaldayım.")
 
     @commands.command(name="play", aliases=["cal", "p"])
