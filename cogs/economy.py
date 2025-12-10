@@ -67,12 +67,12 @@ class DungeonGame(discord.ui.View):
         
         # Düşman Seçimi
         roll = random.random()
-        if roll < 0.50:
+        if roll < 0.45:
             self.enemy = {
                 "name": "Hırsız Goblin", "icon": "👺", "hp": 60, "max_hp": 60,
                 "min_dmg": 5, "max_dmg": 10, "reward": 80, "color": discord.Color.green()
             }
-        elif roll < 0.85:
+        elif roll < 0.80:
             self.enemy = {
                 "name": "Savaşçı Ork", "icon": "👹", "hp": 100, "max_hp": 100,
                 "min_dmg": 10, "max_dmg": 18, "reward": 150, "color": discord.Color.dark_orange()
