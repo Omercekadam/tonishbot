@@ -69,18 +69,18 @@ class DungeonGame(discord.ui.View):
         roll = random.random()
         if roll < 0.40:
             self.enemy = {
-                "name": "Hırsız Goblin", "icon": "👺", "hp": 60, "max_hp": 60,
-                "min_dmg": 5, "max_dmg": 10, "reward": 80, "color": discord.Color.green()
+                "name": "Hırsız Goblin", "icon": "👺", "hp": 70, "max_hp": 70,
+                "min_dmg": 8, "max_dmg": 15, "reward":70, "color": discord.Color.green()
             }
         elif roll < 0.80:
             self.enemy = {
-                "name": "Savaşçı Ork", "icon": "👹", "hp": 100, "max_hp": 100,
+                "name": "Savaşçı Ork", "icon": "👹", "hp": 110, "max_hp": 110,
                 "min_dmg": 10, "max_dmg": 18, "reward": 150, "color": discord.Color.dark_orange()
             }
         else:
             self.enemy = {
-                "name": "Karanlık Şövalye", "icon": "💀", "hp": 160, "max_hp": 150,
-                "min_dmg": 13, "max_dmg": 22, "reward": 400, "color": discord.Color.dark_grey()
+                "name": "Karanlık Şövalye", "icon": "💀", "hp": 150, "max_hp": 150,
+                "min_dmg": 11, "max_dmg": 22, "reward": 400, "color": discord.Color.dark_grey()
             }
 
     async def update_display(self, game_over=False, win=False):
