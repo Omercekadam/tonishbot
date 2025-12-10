@@ -159,6 +159,11 @@ class General(commands.Cog):
             inline=False
         )
         embed.add_field(
+            name="!bilmece",
+            value="🎮Oyunlarla emoji bilmece oyunu oynayarak tonishcoini kazanabileceğiniz oyun.",
+            inline=False
+        )
+        embed.add_field(
             name="!ekonomi",
             value="💰Sunucudaki ekonomi sistemi hakkında bilgi alabileceğiniz komut.",
             inline=False
