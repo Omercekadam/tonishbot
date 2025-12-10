@@ -274,13 +274,44 @@ class SystemBreakerSession:
         self.attempts_left = 10
         self.history = []  # List of (guess, green, yellow)
         self.hints_left = 3
-        self.revealed_indices = set()
+        self.given_hints = []
+        self.available_hints = []
+        self.generate_possible_hints()
 
     def generate_code(self):
         """0-9 arası 5 benzersiz rakam seçer."""
         digits = list("0123456789")
         random.shuffle(digits)
         return "".join(digits[:5])
+
+    def generate_possible_hints(self):
+        """Olası ipuçlarını oluşturur ve karıştırır."""
+        hints = []
+        for i, char in enumerate(self.secret_code):
+            digit = int(char)
+            pos = i + 1
+            
+            # Büyüklük/Küçüklük
+            if digit > 5:
+                hints.append(f"{pos}. rakam 5'ten büyük.")
+            elif digit < 5:
+                hints.append(f"{pos}. rakam 5'ten küçük.")
+            
+            # Tek/Çift
+            if digit % 2 == 0:
+                hints.append(f"{pos}. rakam çift sayı.")
+            else:
+                hints.append(f"{pos}. rakam tek sayı.")
+                
+            # Asal
+            if char in "2357":
+                hints.append(f"{pos}. rakam asal sayı.")
+                
+            # Varlık (Konum belirtmeden)
+            hints.append(f"Rakamlardan biri {digit}.")
+            
+        random.shuffle(hints)
+        self.available_hints = hints
 
     def check_guess(self, guess):
         """Tahmini kontrol eder ve (green, yellow) döner."""
@@ -294,28 +325,14 @@ class SystemBreakerSession:
         return green, yellow
 
     def get_hint(self):
-        """Rastgele bir ipucu (index, digit) döner."""
-        if self.hints_left <= 0:
+        """Havuzdan rastgele bir ipucu çeker."""
+        if self.hints_left <= 0 or not self.available_hints:
             return None
         
-        unrevealed = [i for i in range(5) if i not in self.revealed_indices]
-        if not unrevealed:
-            return None
-            
-        idx = random.choice(unrevealed)
-        self.revealed_indices.add(idx)
+        hint = self.available_hints.pop()
+        self.given_hints.append(hint)
         self.hints_left -= 1
-        return idx, self.secret_code[idx]
-
-    def get_revealed_str(self):
-        """Bilinen kısımları string olarak döner (Örn: 1 _ 3 _ _)."""
-        chars = []
-        for i in range(5):
-            if i in self.revealed_indices:
-                chars.append(self.secret_code[i])
-            else:
-                chars.append("_")
-        return " ".join(chars)
+        return hint
 
 class SystemBreakerView(discord.ui.View):
     def __init__(self, ctx, cog, game):
@@ -337,34 +354,30 @@ class SystemBreakerView(discord.ui.View):
 
         hint = self.game.get_hint()
         if not hint:
-            await interaction.response.send_message("İpucu hakkın kalmadı veya hepsi açık!", ephemeral=True)
+            await interaction.response.send_message("İpucu hakkın kalmadı veya verilecek ipucu yok!", ephemeral=True)
             return
 
-        idx, digit = hint
         self.update_button_label()
         
         # Embed güncelleme
         embed = interaction.message.embeds[0]
         
-        # İpucu alanını güncelle veya ekle
-        hint_str = self.game.get_revealed_str()
-        
-        # Mevcut description'ı koru ama ipucu bilgisini ekle
-        # Description'ı parse etmek yerine yeni bir field ekleyelim veya güncelleyelim
+        # İpuçlarını string yap
+        hints_str = "\n".join([f"• {h}" for h in self.game.given_hints])
         
         # Field kontrolü
         found_field = False
         for i, field in enumerate(embed.fields):
-            if field.name == "🔍 Bilinen Şifre Parçaları":
-                embed.set_field_at(i, name="🔍 Bilinen Şifre Parçaları", value=f"`{hint_str}`", inline=False)
+            if field.name == "� İpuçları":
+                embed.set_field_at(i, name="� İpuçları", value=hints_str, inline=False)
                 found_field = True
                 break
         
         if not found_field:
-            embed.add_field(name="🔍 Bilinen Şifre Parçaları", value=f"`{hint_str}`", inline=False)
+            embed.add_field(name="� İpuçları", value=hints_str, inline=False)
 
         await interaction.response.edit_message(embed=embed, view=self)
-        await interaction.followup.send(f"İpucu: **{idx+1}. hane {digit}**!", ephemeral=True)
+        await interaction.followup.send(f"Yeni İpucu: **{hint}**", ephemeral=True)
 
 class Economy(commands.Cog):
     def __init__(self, bot):
@@ -603,8 +616,9 @@ class Economy(commands.Cog):
         )
         
         # İpuçlarını göster
-        if game.revealed_indices:
-            embed.add_field(name="🔍 Bilinen Şifre Parçaları", value=f"`{game.get_revealed_str()}`", inline=False)
+        if game.given_hints:
+            hints_str = "\n".join([f"• {h}" for h in game.given_hints])
+            embed.add_field(name="� İpuçları", value=hints_str, inline=False)
             
         view = SystemBreakerView(ctx, self, game)
         await ctx.send(embed=embed, view=view)
