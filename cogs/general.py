@@ -149,6 +149,11 @@ class General(commands.Cog):
             inline=False
         )
         embed.add_field(
+            name="!hacker",
+            value="🔒Hacker oyunu oynayarak kilitli kasanın içindeki tonishcoini alabileceğiniz oyun.",
+            inline=False
+        )
+        embed.add_field(
             name="!ekonomi",
             value="💰Sunucudaki ekonomi sistemi hakkında bilgi alabileceğiniz komut.",
             inline=False

@@ -44,6 +44,170 @@ def kartlari_goster(el: list) -> str:
     """El listesini emojili stringe çevirir."""
     return ", ".join(f"{kart[0]}{kart[1]}" for kart in el)
 
+def create_health_bar(current, max_hp, length=10):
+    """Görsel can barı oluşturur."""
+    pct = current / max_hp
+    filled = int(pct * length)
+    bar = "🟩" * filled + "⬜" * (length - filled)
+    return bar
+
+class DungeonGame(discord.ui.View):
+    def __init__(self, ctx, cog):
+        super().__init__(timeout=180)
+        self.ctx = ctx
+        self.cog = cog
+        self.message = None
+        
+        # Oyuncu Statları
+        self.player_max_hp = 100
+        self.player_hp = 100
+        self.potions = 2
+        self.turn_count = 1
+        self.log = "Savaş başladı! Hamleni seç."
+        
+        # Düşman Seçimi
+        roll = random.random()
+        if roll < 0.50:
+            self.enemy = {
+                "name": "Hırsız Goblin", "icon": "👺", "hp": 60, "max_hp": 60,
+                "min_dmg": 5, "max_dmg": 10, "reward": 80, "color": discord.Color.green()
+            }
+        elif roll < 0.85:
+            self.enemy = {
+                "name": "Savaşçı Ork", "icon": "👹", "hp": 100, "max_hp": 100,
+                "min_dmg": 10, "max_dmg": 18, "reward": 150, "color": discord.Color.dark_orange()
+            }
+        else:
+            self.enemy = {
+                "name": "Karanlık Şövalye", "icon": "💀", "hp": 160, "max_hp": 160,
+                "min_dmg": 15, "max_dmg": 25, "reward": 400, "color": discord.Color.dark_grey()
+            }
+
+    async def update_display(self, game_over=False, win=False):
+        enemy_bar = create_health_bar(self.enemy["hp"], self.enemy["max_hp"])
+        player_bar = create_health_bar(self.player_hp, self.player_max_hp)
+        
+        desc = (
+            f"**{self.enemy['icon']} {self.enemy['name']}**\n"
+            f"{enemy_bar} **{self.enemy['hp']}/{self.enemy['max_hp']} HP**\n\n"
+            f"**👤 Maceracı (Sen)**\n"
+            f"{player_bar} **{self.player_hp}/{self.player_max_hp} HP** | 🧪 İksir: {self.potions}/2\n\n"
+            f"📜 **Savaş Günlüğü:**\n{self.log}"
+        )
+        
+        color = self.enemy["color"]
+        if game_over:
+            color = discord.Color.green() if win else discord.Color.red()
+            self.stop()
+            self.clear_items()
+            
+        embed = discord.Embed(title=f"⚔️ ZİNDAN SAVAŞI - TUR {self.turn_count}", description=desc, color=color)
+        
+        if self.message:
+            await self.message.edit(embed=embed, view=None if game_over else self)
+        else:
+            self.message = await self.ctx.send(embed=embed, view=self)
+
+    async def enemy_turn(self, player_defending=False):
+        if self.enemy["hp"] <= 0:
+            return # Düşman öldü, saldıramaz
+
+        dmg = random.randint(self.enemy["min_dmg"], self.enemy["max_dmg"])
+        
+        if player_defending:
+            dmg = int(dmg * 0.4) # %60 azalt
+            self.log += f"\n🛡️ Kalkanın sayesinde sadece {dmg} hasar aldın!"
+        else:
+            self.log += f"\n💥 {self.enemy['name']} sana {dmg} hasar vurdu!"
+            
+        self.player_hp -= dmg
+        if self.player_hp < 0: self.player_hp = 0
+
+    async def check_game_over(self):
+        if self.enemy["hp"] <= 0:
+            self.enemy["hp"] = 0
+            reward = self.enemy["reward"]
+            self.log += f"\n\n🏆 **KAZANDIN!** Düşmanı yendin ve **{reward}** tonish coin kazandın!"
+            await self.cog.update_balance(self.ctx.author.id, reward)
+            await self.update_display(game_over=True, win=True)
+            return True
+            
+        if self.player_hp <= 0:
+            self.log += f"\n\n💀 **ÖLDÜN...** Cesedin zindanda çürüyecek."
+            await self.update_display(game_over=True, win=False)
+            return True
+            
+        return False
+
+    async def process_turn(self, interaction, action_type):
+        if interaction.user.id != self.ctx.author.id:
+            await interaction.response.send_message("Bu senin savaşın değil!", ephemeral=True)
+            return
+        
+        await interaction.response.defer()
+        self.log = "" # Günlüğü temizle
+        player_defending = False
+        
+        # 1. OYUNCU HAMLESİ
+        if action_type == "attack":
+            dmg = random.randint(10, 15)
+            self.enemy["hp"] -= dmg
+            self.log += f"⚔️ Saldırdın ve **{dmg}** hasar verdin!"
+            
+        elif action_type == "heavy":
+            if random.random() < 0.35: # %35 Miss
+                self.log += f"💨 Ağır darbe denedin ama **ISKALADIN!** Dengen bozuldu!"
+                # Ceza: Düşman kritik vuracak (Enemy turn'de halledilir)
+                # Basitlik için burada flag koymuyorum, sadece hasar yok.
+            else:
+                dmg = random.randint(20, 30)
+                self.enemy["hp"] -= dmg
+                self.log += f"🔨 **BAM!** Ağır darbe ile **{dmg}** hasar verdin!"
+                
+        elif action_type == "defend":
+            player_defending = True
+            heal = 5
+            self.player_hp = min(self.player_max_hp, self.player_hp + heal)
+            self.log += f"🛡️ Savunma pozisyonuna geçtin. (+{heal} HP)"
+            
+        elif action_type == "potion":
+            if self.potions > 0:
+                self.potions -= 1
+                heal = 40
+                self.player_hp = min(self.player_max_hp, self.player_hp + heal)
+                self.log += f"🧪 İksiri kafana diktin. (+{heal} HP)"
+            else:
+                self.log += f"🚫 İksirin kalmadı! Boşa hamle yaptın..."
+
+        # 2. DÜŞMAN ÖLÜM KONTROLÜ
+        if await self.check_game_over(): return
+
+        # 3. DÜŞMAN HAMLESİ
+        await self.enemy_turn(player_defending)
+
+        # 4. OYUNCU ÖLÜM KONTROLÜ
+        if await self.check_game_over(): return
+
+        # 5. GÜNCELLEME
+        self.turn_count += 1
+        await self.update_display()
+
+    @discord.ui.button(label="Saldır", style=discord.ButtonStyle.red, emoji="⚔️")
+    async def btn_attack(self, interaction, button):
+        await self.process_turn(interaction, "attack")
+
+    @discord.ui.button(label="Ağır Darbe", style=discord.ButtonStyle.danger, emoji="🔨")
+    async def btn_heavy(self, interaction, button):
+        await self.process_turn(interaction, "heavy")
+
+    @discord.ui.button(label="Savun", style=discord.ButtonStyle.blurple, emoji="🛡️")
+    async def btn_defend(self, interaction, button):
+        await self.process_turn(interaction, "defend")
+
+    @discord.ui.button(label="İksir", style=discord.ButtonStyle.green, emoji="🧪")
+    async def btn_potion(self, interaction, button):
+        await self.process_turn(interaction, "potion")
+
 class BlackjackView(discord.ui.View):
     def __init__(self, ctx, bet: int, cog):
         super().__init__(timeout=60.0) 
@@ -544,6 +708,22 @@ class Economy(commands.Cog):
         
         view = SystemBreakerView(ctx, self, self.system_breaker_games[user_id])
         await ctx.send(embed=embed, view=view)
+
+    @commands.command(name="zindan", aliases=["dungeon", "rpg"])
+    async def zindan(self, ctx):
+        """Zindan Akını oyununu başlatır. Giriş: 50 Coin."""
+        user_id = ctx.author.id
+        balance = await self.get_balance(user_id)
+        entry_fee = 50
+        
+        if balance < entry_fee:
+            await ctx.send(f"Yetersiz bakiye! 🚫 Zindana girmek için **{entry_fee}** tonish coin gerekiyor.")
+            return
+
+        await self.update_balance(user_id, -entry_fee)
+        
+        game = DungeonGame(ctx, self)
+        await game.update_display()
 
     @commands.command(name="tahmin")
     async def tahmin(self, ctx, guess: str):
