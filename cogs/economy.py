@@ -102,6 +102,7 @@ class DungeonGame(discord.ui.View):
             self.clear_items()
             
         embed = discord.Embed(title=f"⚔️ ZİNDAN SAVAŞI - TUR {self.turn_count}", description=desc, color=color)
+        embed.set_footer(text=f"Oyuncu: {self.ctx.author.display_name}", icon_url=self.ctx.author.avatar.url if self.ctx.author.avatar else None)
         
         if self.message:
             await self.message.edit(embed=embed, view=None if game_over else self)
@@ -152,7 +153,7 @@ class DungeonGame(discord.ui.View):
         
         # 1. OYUNCU HAMLESİ
         if action_type == "attack":
-            if random.random() < 0.20:
+            if random.random() < 0.10:
                 self.log += f"💨 Saldırı denedin ama **ISKALADIN!** Dengen bozuldu!"
                 # Ceza: Düşman kritik vuracak (Enemy turn'de halledilir)
                 # Basitlik için burada flag koymuyorum, sadece hasar yok.
@@ -162,7 +163,7 @@ class DungeonGame(discord.ui.View):
                 self.log += f"⚔️ Saldırdın ve **{dmg}** hasar verdin!"
             
         elif action_type == "heavy":
-            if random.random() < 0.55: # %55 Miss
+            if random.random() < 0.45: # %55 Miss
                 self.log += f"💨 Ağır darbe denedin ama **ISKALADIN!** Dengen bozuldu!"
                 # Ceza: Düşman kritik vuracak (Enemy turn'de halledilir)
                 # Basitlik için burada flag koymuyorum, sadece hasar yok.
