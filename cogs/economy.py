@@ -720,7 +720,7 @@ class Economy(commands.Cog):
                         f"Tahmin yapmak için: `!tahmin 12345` yaz.",
             color=discord.Color.dark_red()
         )
-        embed.set_footer(text="Sistem güvenliği: YÜKSEK 🔒")
+        embed.set_footer(text=f"Oyuncu: {ctx.author.display_name} | Sistem güvenliği: YÜKSEK 🔒", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
         
         view = SystemBreakerView(ctx, self, self.system_breaker_games[user_id])
         await ctx.send(embed=embed, view=view)
@@ -782,6 +782,7 @@ class Economy(commands.Cog):
                             f"**Kazanç:** {total_reward} tonish coin 💰",
                 color=discord.Color.green()
             )
+            embed.set_footer(text=f"Oyuncu: {ctx.author.display_name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
             await ctx.send(embed=embed)
             return
 
@@ -796,6 +797,7 @@ class Economy(commands.Cog):
                             f"**Doğru Şifre:** `{secret}`",
                 color=discord.Color.red()
             )
+            embed.set_footer(text=f"Oyuncu: {ctx.author.display_name}", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
             await ctx.send(embed=embed)
             return
 
@@ -810,6 +812,7 @@ class Economy(commands.Cog):
                         f"**Geçmiş Tahminler:**\n{history_text}",
             color=discord.Color.orange()
         )
+        embed.set_footer(text=f"Oyuncu: {ctx.author.display_name} | Sistem güvenliği: YÜKSEK 🔒", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
         
         # İpuçlarını göster
         if game.given_hints:
