@@ -79,8 +79,8 @@ class DungeonGame(discord.ui.View):
             }
         else:
             self.enemy = {
-                "name": "Karanlık Şövalye", "icon": "💀", "hp": 160, "max_hp": 160,
-                "min_dmg": 15, "max_dmg": 25, "reward": 400, "color": discord.Color.dark_grey()
+                "name": "Karanlık Şövalye", "icon": "💀", "hp": 160, "max_hp": 150,
+                "min_dmg": 13, "max_dmg": 22, "reward": 400, "color": discord.Color.dark_grey()
             }
 
     async def update_display(self, game_over=False, win=False):
