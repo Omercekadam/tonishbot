@@ -67,7 +67,7 @@ class DungeonGame(discord.ui.View):
         
         # Düşman Seçimi
         roll = random.random()
-        if roll < 0.45:
+        if roll < 0.40:
             self.enemy = {
                 "name": "Hırsız Goblin", "icon": "👺", "hp": 60, "max_hp": 60,
                 "min_dmg": 5, "max_dmg": 10, "reward": 80, "color": discord.Color.green()
@@ -157,7 +157,7 @@ class DungeonGame(discord.ui.View):
                 # Ceza: Düşman kritik vuracak (Enemy turn'de halledilir)
                 # Basitlik için burada flag koymuyorum, sadece hasar yok.
             else:
-                dmg = random.randint(7, 14)
+                dmg = random.randint(7, 18)
                 self.enemy["hp"] -= dmg
                 self.log += f"⚔️ Saldırdın ve **{dmg}** hasar verdin!"
             
@@ -167,7 +167,7 @@ class DungeonGame(discord.ui.View):
                 # Ceza: Düşman kritik vuracak (Enemy turn'de halledilir)
                 # Basitlik için burada flag koymuyorum, sadece hasar yok.
             else:
-                dmg = random.randint(20, 30)
+                dmg = random.randint(20, 35)
                 self.enemy["hp"] -= dmg
                 self.log += f"🔨 **BAM!** Ağır darbe ile **{dmg}** hasar verdin!"
                 
@@ -178,7 +178,7 @@ class DungeonGame(discord.ui.View):
         elif action_type == "potion":
             if self.potions > 0:
                 self.potions -= 1
-                heal = 40
+                heal = random.randint(20, 50)
                 self.player_hp = min(self.player_max_hp, self.player_hp + heal)
                 self.log += f"🧪 İksiri kafana diktin. (+{heal} HP)"
             else:
