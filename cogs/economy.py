@@ -115,8 +115,10 @@ class DungeonGame(discord.ui.View):
         dmg = random.randint(self.enemy["min_dmg"], self.enemy["max_dmg"])
         
         if player_defending:
-            dmg = int(dmg * 0.4) # %60 azalt
-            self.log += f"\n🛡️ Kalkanın sayesinde sadece {dmg} hasar aldın!"
+            reduction_rate = random.randint(60, 100)
+            reduced_dmg = int(dmg * (100 - reduction_rate) / 100)
+            self.log += f"\n🛡️ Kalkanın hasarın %{reduction_rate}'ını engelledi! ({dmg} -> {reduced_dmg})"
+            dmg = reduced_dmg
         else:
             self.log += f"\n💥 {self.enemy['name']} sana {dmg} hasar vurdu!"
             
@@ -150,12 +152,17 @@ class DungeonGame(discord.ui.View):
         
         # 1. OYUNCU HAMLESİ
         if action_type == "attack":
-            dmg = random.randint(10, 15)
-            self.enemy["hp"] -= dmg
-            self.log += f"⚔️ Saldırdın ve **{dmg}** hasar verdin!"
+            if random.random() < 0.20:
+                self.log += f"💨 Saldırı denedin ama **ISKALADIN!** Dengen bozuldu!"
+                # Ceza: Düşman kritik vuracak (Enemy turn'de halledilir)
+                # Basitlik için burada flag koymuyorum, sadece hasar yok.
+            else:
+                dmg = random.randint(7, 14)
+                self.enemy["hp"] -= dmg
+                self.log += f"⚔️ Saldırdın ve **{dmg}** hasar verdin!"
             
         elif action_type == "heavy":
-            if random.random() < 0.35: # %35 Miss
+            if random.random() < 0.55: # %55 Miss
                 self.log += f"💨 Ağır darbe denedin ama **ISKALADIN!** Dengen bozuldu!"
                 # Ceza: Düşman kritik vuracak (Enemy turn'de halledilir)
                 # Basitlik için burada flag koymuyorum, sadece hasar yok.
@@ -166,9 +173,7 @@ class DungeonGame(discord.ui.View):
                 
         elif action_type == "defend":
             player_defending = True
-            heal = 5
-            self.player_hp = min(self.player_max_hp, self.player_hp + heal)
-            self.log += f"🛡️ Savunma pozisyonuna geçtin. (+{heal} HP)"
+            self.log += f"🛡️ Savunma pozisyonuna geçtin. Gelecek hasarı karşılamaya hazırsın!"
             
         elif action_type == "potion":
             if self.potions > 0:
