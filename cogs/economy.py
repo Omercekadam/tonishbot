@@ -273,6 +273,8 @@ class SystemBreakerSession:
         self.secret_code = self.generate_code()
         self.attempts_left = 10
         self.history = []  # List of (guess, green, yellow)
+        self.hints_left = 3
+        self.revealed_indices = set()
 
     def generate_code(self):
         """0-9 arası 5 benzersiz rakam seçer."""
@@ -290,6 +292,79 @@ class SystemBreakerSession:
             elif char in self.secret_code:
                 yellow += 1
         return green, yellow
+
+    def get_hint(self):
+        """Rastgele bir ipucu (index, digit) döner."""
+        if self.hints_left <= 0:
+            return None
+        
+        unrevealed = [i for i in range(5) if i not in self.revealed_indices]
+        if not unrevealed:
+            return None
+            
+        idx = random.choice(unrevealed)
+        self.revealed_indices.add(idx)
+        self.hints_left -= 1
+        return idx, self.secret_code[idx]
+
+    def get_revealed_str(self):
+        """Bilinen kısımları string olarak döner (Örn: 1 _ 3 _ _)."""
+        chars = []
+        for i in range(5):
+            if i in self.revealed_indices:
+                chars.append(self.secret_code[i])
+            else:
+                chars.append("_")
+        return " ".join(chars)
+
+class SystemBreakerView(discord.ui.View):
+    def __init__(self, ctx, cog, game):
+        super().__init__(timeout=300)
+        self.ctx = ctx
+        self.cog = cog
+        self.game = game
+        self.update_button_label()
+
+    def update_button_label(self):
+        self.children[0].label = f"💡 İpucu Al ({self.game.hints_left})"
+        self.children[0].disabled = self.game.hints_left <= 0
+
+    @discord.ui.button(label="💡 İpucu Al", style=discord.ButtonStyle.blurple)
+    async def hint_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.ctx.author.id:
+            await interaction.response.send_message("Bu senin oyunun değil!", ephemeral=True)
+            return
+
+        hint = self.game.get_hint()
+        if not hint:
+            await interaction.response.send_message("İpucu hakkın kalmadı veya hepsi açık!", ephemeral=True)
+            return
+
+        idx, digit = hint
+        self.update_button_label()
+        
+        # Embed güncelleme
+        embed = interaction.message.embeds[0]
+        
+        # İpucu alanını güncelle veya ekle
+        hint_str = self.game.get_revealed_str()
+        
+        # Mevcut description'ı koru ama ipucu bilgisini ekle
+        # Description'ı parse etmek yerine yeni bir field ekleyelim veya güncelleyelim
+        
+        # Field kontrolü
+        found_field = False
+        for i, field in enumerate(embed.fields):
+            if field.name == "🔍 Bilinen Şifre Parçaları":
+                embed.set_field_at(i, name="🔍 Bilinen Şifre Parçaları", value=f"`{hint_str}`", inline=False)
+                found_field = True
+                break
+        
+        if not found_field:
+            embed.add_field(name="🔍 Bilinen Şifre Parçaları", value=f"`{hint_str}`", inline=False)
+
+        await interaction.response.edit_message(embed=embed, view=self)
+        await interaction.followup.send(f"İpucu: **{idx+1}. hane {digit}**!", ephemeral=True)
 
 class Economy(commands.Cog):
     def __init__(self, bot):
@@ -453,7 +528,9 @@ class Economy(commands.Cog):
             color=discord.Color.dark_red()
         )
         embed.set_footer(text="Sistem güvenliği: YÜKSEK 🔒")
-        await ctx.send(embed=embed)
+        
+        view = SystemBreakerView(ctx, self, self.system_breaker_games[user_id])
+        await ctx.send(embed=embed, view=view)
 
     @commands.command(name="tahmin")
     async def tahmin(self, ctx, guess: str):
@@ -524,7 +601,13 @@ class Economy(commands.Cog):
                         f"**Geçmiş Tahminler:**\n{history_text}",
             color=discord.Color.orange()
         )
-        await ctx.send(embed=embed)
+        
+        # İpuçlarını göster
+        if game.revealed_indices:
+            embed.add_field(name="🔍 Bilinen Şifre Parçaları", value=f"`{game.get_revealed_str()}`", inline=False)
+            
+        view = SystemBreakerView(ctx, self, game)
+        await ctx.send(embed=embed, view=view)
 
     def create_circular_mask(self, size):
         mask = Image.new("L", size, 0)
