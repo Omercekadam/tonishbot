@@ -4,6 +4,9 @@ import aiosqlite
 import random
 import os
 import io
+import io
+import json
+import asyncio
 from datetime import datetime, time, timezone
 from PIL import Image, ImageDraw, ImageFont
 
@@ -559,6 +562,13 @@ class Economy(commands.Cog):
         async with aiosqlite.connect(DB_PATH) as db:
             await db.execute("CREATE TABLE IF NOT EXISTS economy (user_id INTEGER PRIMARY KEY, balance INTEGER DEFAULT 100)")
             await db.commit()
+            
+        try:
+            with open("emoji_games.json", "r", encoding="utf-8") as f:
+                self.emoji_games = json.load(f)
+        except Exception as e:
+            print(f"Emoji oyunları yüklenemedi: {e}")
+            self.emoji_games = []
 
     async def get_balance(self, user_id):
         async with aiosqlite.connect(DB_PATH) as db:
@@ -804,10 +814,107 @@ class Economy(commands.Cog):
         # İpuçlarını göster
         if game.given_hints:
             hints_str = "\n".join([f"• {h}" for h in game.given_hints])
-            embed.add_field(name="� İpuçları", value=hints_str, inline=False)
+            embed.add_field(name="💡 İpuçları", value=hints_str, inline=False)
             
         view = SystemBreakerView(ctx, self, game)
         await ctx.send(embed=embed, view=view)
+
+    @commands.command(name="bilmece")
+    @commands.cooldown(1, 300, commands.BucketType.user)
+    async def bilmece(self, ctx):
+        """Emojilerle anlatılan oyunu tahmin et! (5dk bekleme süresi)"""
+        if not self.emoji_games:
+            await ctx.send("Oyun veritabanı boş veya yüklenemedi!")
+            return
+
+        game_data = random.choice(self.emoji_games)
+        correct_answer = game_data["name"]
+        aliases = game_data.get("aliases", [])
+        
+        # Normalizasyon fonksiyonu
+        def normalize(text):
+            return text.lower().replace("-", "").replace(" ", "").replace("'", "").replace(":", "")
+
+        normalized_answer = normalize(correct_answer)
+        normalized_aliases = [normalize(a) for a in aliases]
+        
+        embed = discord.Embed(
+            title="🎮 HANGİ OYUN BU?",
+            description=f"❓ **Soru:** {game_data['emojis']}\n\n"
+                        f"⏱️ **Süre:** 30 Saniye\n"
+                        f"Cevabı direkt sohbete yazın!",
+            color=discord.Color.blue()
+        )
+        message = await ctx.send(embed=embed)
+        
+        start_time = datetime.now()
+        
+        def check(m):
+            if m.channel != ctx.channel or m.author.bot:
+                return False
+            
+            content = normalize(m.content)
+            return content == normalized_answer or content in normalized_aliases
+
+        try:
+            # İlk 15 saniye (İpucusuz)
+            winner_msg = await self.bot.wait_for('message', check=check, timeout=15.0)
+            
+            # KAZANDI (Hızlı)
+            elapsed = (datetime.now() - start_time).total_seconds()
+            reward = 100
+            
+            await self.update_balance(winner_msg.author.id, reward)
+            
+            embed.color = discord.Color.green()
+            embed.description = f"🎉 **DOĞRU CEVAP!**\n\n" \
+                                f"**Kazanan:** {winner_msg.author.mention}\n" \
+                                f"**Oyun:** {correct_answer}\n" \
+                                f"**Süre:** {elapsed:.1f}sn\n" \
+                                f"**Ödül:** {reward} Tonish Coin 💰"
+            await message.edit(embed=embed)
+            await ctx.send(f"Tebrikler {winner_msg.author.mention}! Hızlı davrandın ve **{reward}** coin kazandın!")
+            return
+
+        except asyncio.TimeoutError:
+            # İpucu Zamanı
+            embed.description = f"❓ **Soru:** {game_data['emojis']}\n\n" \
+                                f"💡 **İpucu:** {game_data['hint']}\n" \
+                                f"⏱️ **Süre:** Son 15 Saniye!"
+            embed.color = discord.Color.gold()
+            await message.edit(embed=embed)
+            
+            try:
+                # Son 15 saniye (İpuculu)
+                winner_msg = await self.bot.wait_for('message', check=check, timeout=15.0)
+                
+                # KAZANDI (Yavaş)
+                elapsed = (datetime.now() - start_time).total_seconds()
+                reward = 50
+                
+                await self.update_balance(winner_msg.author.id, reward)
+                
+                embed.color = discord.Color.green()
+                embed.description = f"🎉 **DOĞRU CEVAP!**\n\n" \
+                                    f"**Kazanan:** {winner_msg.author.mention}\n" \
+                                    f"**Oyun:** {correct_answer}\n" \
+                                    f"**Süre:** {elapsed:.1f}sn\n" \
+                                    f"**Ödül:** {reward} Tonish Coin 💰"
+                await message.edit(embed=embed)
+                await ctx.send(f"Tebrikler {winner_msg.author.mention}! İpucuyla bildin ve **{reward}** coin kazandın!")
+                
+            except asyncio.TimeoutError:
+                # KİMSE BİLEMEDİ
+                embed.color = discord.Color.red()
+                embed.description = f"⌛ **SÜRE DOLDU!**\n\n" \
+                                    f"Kimse bilemedi...\n" \
+                                    f"**Doğru Cevap:** {correct_answer}"
+                await message.edit(embed=embed)
+
+    @bilmece.error
+    async def bilmece_error(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(f"⏳ Biraz soluklan! Bu komutu tekrar kullanmak için **{error.retry_after:.0f} saniye** beklemelisin.")
 
     def create_circular_mask(self, size):
         mask = Image.new("L", size, 0)

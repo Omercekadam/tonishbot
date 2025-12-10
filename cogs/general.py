@@ -154,6 +154,11 @@ class General(commands.Cog):
             inline=False
         )
         embed.add_field(
+            name="!zindan",
+            value="🐲Zindanlardaki düşmanları öldürerek ödül kazanabileceğiniz D&D benzeri oyun.",
+            inline=False
+        )
+        embed.add_field(
             name="!ekonomi",
             value="💰Sunucudaki ekonomi sistemi hakkında bilgi alabileceğiniz komut.",
             inline=False

@@ -1,0 +1,452 @@
+[
+    {
+        "name": "Minecraft",
+        "emoji": "⛏️🟩🧟‍♂️💎🐷",
+        "aliases": ["minecraft", "mc"],
+        "hint": "Steve & Alex, Kareler, Creeper"
+    },
+    {
+        "name": "Grand Theft Auto V",
+        "emoji": "🚗🔫⭐️👮💸",
+        "aliases": ["gta 5", "gta v", "gta", "grand theft auto"],
+        "hint": "Michael, Trevor, Franklin, Los Santos"
+    },
+    {
+        "name": "League of Legends",
+        "emoji": "🛡️⚔️🏆🐉🤬",
+        "aliases": ["lol", "league of legends", "league"],
+        "hint": "Faker, Sihirdar Vadisi, Mid Sal, Teemo"
+    },
+    {
+        "name": "Counter-Strike 2",
+        "emoji": "🔫💣👮‍♂️📦🔥",
+        "aliases": ["cs2", "cs", "csgo", "counter strike", "counter strike 2"],
+        "hint": "Rush B, AWP, Dust 2, Terrorists Win"
+    },
+    {
+        "name": "Valorant",
+        "emoji": "🔫✨🌪️🏹🟣",
+        "aliases": ["valorant", "valo"],
+        "hint": "Jett, Spike, Radyant, Riot Games"
+    },
+    {
+        "name": "God of War",
+        "emoji": "🪓❄️😡👦🏔️",
+        "aliases": ["god of war", "gow", "kratos"],
+        "hint": "Boy!, Kratos, İskandinav Mitolojisi, Atreus"
+    },
+    {
+        "name": "Elden Ring",
+        "emoji": "💍👴🗡️🐎🔥",
+        "aliases": ["elden ring", "elden"],
+        "hint": "Malenia, Maidenless, FromSoftware, Zorluk"
+    },
+    {
+        "name": "Red Dead Redemption 2",
+        "emoji": "🤠🐴🔫⛺🌵",
+        "aliases": ["rdr2", "rdr 2", "red dead redemption"],
+        "hint": "Arthur Morgan, Dutch, Vahşi Batı, Kovboy"
+    },
+    {
+        "name": "The Witcher 3",
+        "emoji": "🐺⚔️🦄🔮🛁",
+        "aliases": ["witcher 3", "witcher", "the witcher"],
+        "hint": "Geralt, Yennefer, Canavar Avcısı, Gwent"
+    },
+    {
+        "name": "Cyberpunk 2077",
+        "emoji": "🦾🌆🟡🎸💾",
+        "aliases": ["cyberpunk", "cyberpunk 2077", "cp2077"],
+        "hint": "Keanu Reeves, Johnny Silverhand, Night City, Wake up Samurai"
+    },
+    {
+        "name": "Assassin's Creed",
+        "emoji": "🦅🗡️🏰🕶️🕌",
+        "aliases": ["assassins creed", "ac", "assassin's creed"],
+        "hint": "Ezio, Hidden Blade, Saman Balyası, Tapınakçılar"
+    },
+    {
+        "name": "Call of Duty",
+        "emoji": "🎖️🔫🚁💀🇺🇸",
+        "aliases": ["cod", "call of duty", "mw", "modern warfare"],
+        "hint": "Captain Price, Ghost, Gulag, Savaş Simülasyonu"
+    },
+    {
+        "name": "FIFA / EA FC",
+        "emoji": "⚽🏟️🥅👟🎮",
+        "aliases": ["fifa", "ea fc", "fc 24", "fc24", "fifa 24"],
+        "hint": "Ultimate Team, Futbol, EA Sports"
+    },
+    {
+        "name": "Spider-Man",
+        "emoji": "🕸️🕷️🏙️🔴🔵",
+        "aliases": ["spiderman", "spider-man", "spider man"],
+        "hint": "Peter Parker, Miles Morales, Ağ Atma, New York"
+    },
+    {
+        "name": "Rocket League",
+        "emoji": "🚗⚽🏟️🚀💥",
+        "aliases": ["rocket league", "rl"],
+        "hint": "Uçan Arabalar, Octane, Futbol"
+    },
+    {
+        "name": "Fortnite",
+        "emoji": "🔨🧱🚍🕺🍌",
+        "aliases": ["fortnite", "fort"],
+        "hint": "Battle Bus, İnşaat Yapma, Tilted Towers, V-Bucks"
+    },
+    {
+        "name": "PUBG",
+        "emoji": "🍳🪂🐔🍗🔫",
+        "aliases": ["pubg", "battlegrounds"],
+        "hint": "Pochinki, Tava, Winner Winner Chicken Dinner"
+    },
+    {
+        "name": "Overwatch 2",
+        "emoji": "🦍🛡️😇🔫🤖",
+        "aliases": ["overwatch", "ow", "ow2"],
+        "hint": "Tracer, Payload, Blizzard, Hanzo Main"
+    },
+    {
+        "name": "The Last of Us",
+        "emoji": "🍄🧟‍♂️🎸👧🏹",
+        "aliases": ["tlou", "the last of us", "last of us"],
+        "hint": "Ellie & Joel, Clicker (Tıklayanlar), Fireflies"
+    },
+    {
+        "name": "Uncharted",
+        "emoji": "🗺️🧭💰🧗🔫",
+        "aliases": ["uncharted", "nathan drake"],
+        "hint": "Nathan Drake, Hazine Avcısı, Sully"
+    },
+    {
+        "name": "Resident Evil",
+        "emoji": "🧟‍♂️☂️🏠👮☣️",
+        "aliases": ["resident evil", "re"],
+        "hint": "Umbrella Corp, Leon Kennedy, Nemesis, Zombiler"
+    },
+    {
+        "name": "Sims 4",
+        "emoji": "🏠💎👨‍👩‍👧‍👦🗣️🚽",
+        "aliases": ["sims", "the sims", "sims 4"],
+        "hint": "Simlish Dili, Motherlode, Havuz Merdiveni"
+    },
+    {
+        "name": "Among Us",
+        "emoji": "🚀🔪🔴🤫📮",
+        "aliases": ["among us", "amogus", "amongus"],
+        "hint": "Impostor (Sahtekar), Sus, Vent, Electrical"
+    },
+    {
+        "name": "Stardew Valley",
+        "emoji": "🚜🌾🐔👴🐟",
+        "aliases": ["stardew valley", "stardew"],
+        "hint": "Pelican Town, Çiftçilik, Dedenin Mektubu"
+    },
+    {
+        "name": "Undertale",
+        "emoji": "💀💙🌻❤️🐐",
+        "aliases": ["undertale", "sans"],
+        "hint": "Sans, Papyrus, Determination (Azim), Mercy"
+    },
+    {
+        "name": "Hollow Knight",
+        "emoji": "🐞🗡️🌑👻🦗",
+        "aliases": ["hollow knight"],
+        "hint": "Hallownest, Hornet, Böcek Krallığı, Metroidvania"
+    },
+    {
+        "name": "Terraria",
+        "emoji": "🌳⛏️👁️🗡️🌃",
+        "aliases": ["terraria"],
+        "hint": "2D Minecraft, Eye of Cthulhu, Moon Lord"
+    },
+    {
+        "name": "Cuphead",
+        "emoji": "☕🎲👿🎨🔥",
+        "aliases": ["cuphead"],
+        "hint": "Mugman, Şeytanla Anlaşma, 1930 Çizgi Filmleri"
+    },
+    {
+        "name": "Celeste",
+        "emoji": "🍓🗻🧗‍♀️💨🐦",
+        "aliases": ["celeste"],
+        "hint": "Madeline, Dağa Tırmanış, Çilek, Depresyon"
+    },
+    {
+        "name": "Hades",
+        "emoji": "🏛️🔥💀🩸⚡",
+        "aliases": ["hades"],
+        "hint": "Zagreus, Yeraltı Dünyası, Babaya İsyan, Roguelike"
+    },
+    {
+        "name": "Vampire Survivors",
+        "emoji": "🧛⚰️💎🧄🦇",
+        "aliases": ["vampire survivors"],
+        "hint": "Sarımsak, Binlerce Düşman, Tek Elle Oynanır"
+    },
+    {
+        "name": "Super Mario",
+        "emoji": "🍄👨🏻🔴🐢⭐",
+        "aliases": ["mario", "super mario", "super mario bros"],
+        "hint": "Prenses Peach, Bowser, Tesisatçı, Nintendo"
+    },
+    {
+        "name": "Pac-Man",
+        "emoji": "🟡👻🍒🕹️💊",
+        "aliases": ["pacman", "pac-man", "pac man"],
+        "hint": "Waka Waka, Hayaletler, Labirent"
+    },
+    {
+        "name": "Tetris",
+        "emoji": "🧱🔽🟥🟦🎶",
+        "aliases": ["tetris"],
+        "hint": "Rus Müziği, Bloklar, Satırları Yok Etme"
+    },
+    {
+        "name": "Pokemon",
+        "emoji": "🔴⚪⚡🧢🐾",
+        "aliases": ["pokemon", "pokémon"],
+        "hint": "Pikachu, Ash, Hepsini Yakala, Pokeball"
+    },
+    {
+        "name": "Five Nights at Freddy's",
+        "emoji": "🐻🐰🐔🍕🔦",
+        "aliases": ["fnaf", "five nights at freddys"],
+        "hint": "Freddy Fazbear, Güvenlik Görevlisi, Jumpscare"
+    },
+    {
+        "name": "Dark Souls",
+        "emoji": "☀️🔥💀⚱️🗡️",
+        "aliases": ["dark souls", "ds"],
+        "hint": "Praise the Sun, Bonfire, You Died, Zorluk"
+    },
+    {
+        "name": "Skyrim",
+        "emoji": "🐉🗣️🏹🦵❄️",
+        "aliases": ["skyrim", "elder scrolls"],
+        "hint": "Fus Ro Dah, Dizinden ok yiyen muhafız, Dragonborn"
+    },
+    {
+        "name": "Fallout",
+        "emoji": "☢️🐶👍🧥🥤",
+        "aliases": ["fallout", "fallout 4", "new vegas"],
+        "hint": "Pip-Boy, Vault Boy, Nuka Cola, Savaş Asla Değişmez"
+    },
+    {
+        "name": "Bioshock",
+        "emoji": "💉🌊⚓👧🏙️",
+        "aliases": ["bioshock"],
+        "hint": "Big Daddy, Little Sister, Rapture, Would you kindly?"
+    },
+    {
+        "name": "Portal",
+        "emoji": "🟠🔵🍰🤖🔫",
+        "aliases": ["portal", "portal 2"],
+        "hint": "GLaDOS, Pasta Yalan, Companion Cube"
+    },
+    {
+        "name": "Half-Life",
+        "emoji": "👓🦀🔧☢️3️⃣🚫",
+        "aliases": ["half life", "hl", "half-life"],
+        "hint": "Gordon Freeman, Levye (Crowbar), Headcrab, Valve 3'ü Sayamaz"
+    },
+    {
+        "name": "Team Fortress 2",
+        "emoji": "🧢⛑️🥪🔫🏥",
+        "aliases": ["tf2", "team fortress 2"],
+        "hint": "Heavy, Medic, Spy Check, Şapka Simülatörü"
+    },
+    {
+        "name": "Death Stranding",
+        "emoji": "👶🌧️🚶‍♂️📦👻",
+        "aliases": ["death stranding"],
+        "hint": "Hideo Kojima, Kargocu Simülatörü, BB, Norman Reedus"
+    },
+    {
+        "name": "Metal Gear Solid",
+        "emoji": "📦❗️🐍🔫🤖",
+        "aliases": ["mgs", "metal gear", "metal gear solid"],
+        "hint": "Solid Snake, Big Boss, Karton Kutu, Gizlilik"
+    },
+    {
+        "name": "Baldur's Gate 3",
+        "emoji": "🎲🐙🧠🐻🔥",
+        "aliases": ["bg3", "baldurs gate 3", "baldur's gate"],
+        "hint": "D&D, Zart Atma, Astarion, Mind Flayer"
+    },
+    {
+        "name": "Helldivers 2",
+        "emoji": "🫡🐛🤖💣🚀",
+        "aliases": ["helldivers", "helldivers 2"],
+        "hint": "Demokrasi!, Super Earth, Dost Ateşi, Böcekler"
+    },
+    {
+        "name": "Lethal Company",
+        "emoji": "🚀👺🔦📢🧱",
+        "aliases": ["lethal company"],
+        "hint": "Şirket (Company), Kota, Hurda Toplama, Bracken"
+    },
+    {
+        "name": "Palworld",
+        "emoji": "🔫🐼🐑🔨🥚",
+        "aliases": ["palworld"],
+        "hint": "Silahlı Pokemonlar, Kölelik, Üs Kurma"
+    },
+    {
+        "name": "Rust",
+        "emoji": "🪨🪵🔫☢️🏠",
+        "aliases": ["rust"],
+        "hint": "Çıplak ve Taşlı Başlangıç, Raid, Toxic Oyuncular"
+    },
+    {
+        "name": "Sea of Thieves",
+        "emoji": "🏴‍☠️🦜🚢🌊🍌",
+        "aliases": ["sot", "sea of thieves"],
+        "hint": "Korsanlık, Gemi Sürme, Kraken, Hazine"
+    },
+    {
+        "name": "Euro Truck Simulator 2",
+        "emoji": "🚛🛣️⛽🌍🚦",
+        "aliases": ["ets2", "ets", "euro truck simulator"],
+        "hint": "Kamyon, Lojistik, Uzun Yol, Radyo"
+    },
+    {
+        "name": "Subnautica",
+        "emoji": "🌊🐠🦈🚀🔋",
+        "aliases": ["subnautica"],
+        "hint": "Okyanus Gezegeni, Leviathan, Oksijen Tüpü"
+    },
+    {
+        "name": "Dead by Daylight",
+        "emoji": "🪝😱🏃‍♂️🔪🔦",
+        "aliases": ["dbd", "dead by daylight"],
+        "hint": "Jeneratör Tamiri, Katil vs 4 Kişi, Kanca"
+    },
+    {
+        "name": "Mortal Kombat",
+        "emoji": "🐉🩸❄️🦂💀",
+        "aliases": ["mk", "mortal kombat"],
+        "hint": "Fatality, Scorpion, Sub-Zero, Get Over Here!"
+    },
+    {
+        "name": "The Legend of Zelda",
+        "emoji": "🧝‍♂️🗡️🛡️👸⏳",
+        "aliases": ["zelda", "botw", "totk", "legend of zelda"],
+        "hint": "Link, Hyrule, Triforce, Prensesi Kurtar"
+    },
+    {
+        "name": "World of Warcraft",
+        "emoji": "⚔️🌍🧙‍♂️🦁🦅",
+        "aliases": ["wow", "world of warcraft"],
+        "hint": "Alliance vs Horde, Azeroth, Lich King, MMORPG"
+    },
+    {
+        "name": "Genshin Impact",
+        "emoji": "✨🧚‍♀️⚔️🌪️🎎",
+        "aliases": ["genshin", "genshin impact"],
+        "hint": "Paimon, Gacha, Teyvat, Elementler"
+    },
+    {
+        "name": "Apex Legends",
+        "emoji": "🤖🏃‍♂️🔫🛡️🎒",
+        "aliases": ["apex", "apex legends"],
+        "hint": "Wraith, Pathfinder, Titanfall Evreni, Battle Royale"
+    },
+    {
+        "name": "Rainbow Six Siege",
+        "emoji": "🧱🔨💣👮‍♂️📹",
+        "aliases": ["r6", "rainbow six", "siege", "rss"],
+        "hint": "Duvar Kırma, Operatörler, Taktiksel FPS, Ubisoft"
+    },
+    {
+        "name": "Roblox",
+        "emoji": "🧱🟥👷‍♂️🎮🌎",
+        "aliases": ["roblox"],
+        "hint": "Oof!, Bloxburg, Kendi oyununu yap, Lego benzeri"
+    },
+    {
+        "name": "Tekken",
+        "emoji": "🥊🥋⚡🐼🔥",
+        "aliases": ["tekken", "tekken 7", "tekken 8"],
+        "hint": "Jin Kazama, Heihachi, King of Iron Fist, Dövüş"
+    },
+    {
+        "name": "Street Fighter",
+        "emoji": "🥋👊💨🔥🇯🇵",
+        "aliases": ["sf", "street fighter", "sf6"],
+        "hint": "Hadouken!, Ryu, Chun-Li, Shoryuken"
+    },
+    {
+        "name": "Final Fantasy",
+        "emoji": "🗡️☁️🐥🔮🚂",
+        "aliases": ["ff", "final fantasy", "ff7"],
+        "hint": "Cloud Strife, Chocobo, Sephiroth, JRPG"
+    },
+    {
+        "name": "Diablo",
+        "emoji": "👿🔥🗡️🩸🏰",
+        "aliases": ["diablo", "diablo 4", "diablo iv"],
+        "hint": "Deckard Cain, Sanctuary, Cehennem Lordları, Loot"
+    },
+    {
+        "name": "Mass Effect",
+        "emoji": "🚀👽🔫🌌💙",
+        "aliases": ["mass effect", "me"],
+        "hint": "Commander Shepard, Normandy, Reaperlar, Uzay Operası"
+    },
+    {
+        "name": "Silent Hill",
+        "emoji": "🌫️🔺📻🏥🔦",
+        "aliases": ["silent hill", "pt"],
+        "hint": "Pyramid Head, Sisli Kasaba, Radyo Sesi, Korku"
+    },
+    {
+        "name": "Halo",
+        "emoji": "🟢👨‍🚀🔫💍👽",
+        "aliases": ["halo", "master chief"],
+        "hint": "Master Chief, Cortana, Xbox Maskotu, Covenant"
+    },
+    {
+        "name": "Tomb Raider",
+        "emoji": "🔫🔫🏺🧗‍♀️🇬🇧",
+        "aliases": ["tomb raider", "lara croft"],
+        "hint": "Lara Croft, Mezarlar, Arkeolog, Bulmaca"
+    },
+    {
+        "name": "Civilization",
+        "emoji": "👑🏛️🚀⏳💣",
+        "aliases": ["civ", "civilization", "civ 6"],
+        "hint": "Gandhi ve Nükleer, Bir tur daha (One more turn), Strateji"
+    },
+    {
+        "name": "Sekiro: Shadows Die Twice",
+        "emoji": "🥷🦾🗡️🏯👺",
+        "aliases": ["sekiro"],
+        "hint": "Tek Kol, Shinobi, Parry (Sektirme), Zorluk"
+    },
+    {
+        "name": "Phasmophobia",
+        "emoji": "👻🎤📸📔🕯️",
+        "aliases": ["phasmo", "phasmophobia"],
+        "hint": "Hayalet Avcıları, Telsiz, Spirit Box, Adını Söyleme"
+    },
+    {
+        "name": "Geometry Dash",
+        "emoji": "🟧🔺🎶😡🔄",
+        "aliases": ["geometry dash", "gd"],
+        "hint": "Müzik, Ritim, Sinir Krizi, Zıplayan Kare"
+    },
+    {
+        "name": "Clash of Clans",
+        "emoji": "🏰🔨🤴🧔💣",
+        "aliases": ["coc", "clash of clans"],
+        "hint": "Barbarlar, Köy Binası, Supercell, Klan Savaşı"
+    },
+    {
+        "name": "DOOM",
+        "emoji": "👹🔫🩸🎸🔥",
+        "aliases": ["doom", "doom eternal"],
+        "hint": "Doomguy, Mars, Rip and Tear, Metal Müzik"
+    }
+]
