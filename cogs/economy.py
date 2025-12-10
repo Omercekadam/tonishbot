@@ -66,7 +66,7 @@ class DungeonGame(discord.ui.View):
         self.player_hp = 100
         self.potions = 2
         self.turn_count = 1
-        self.log = "Savaş başladı! Hamleni seç."
+        self.log = "50 Tonishcoin vererek zindan muhafızını kandırdın vs savaş başladı! Hamleni seç."
         
         # Düşman Seçimi
         roll = random.random()
