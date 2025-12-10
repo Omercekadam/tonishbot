@@ -823,9 +823,18 @@ class Economy(commands.Cog):
     @commands.cooldown(1, 300, commands.BucketType.user)
     async def bilmece(self, ctx):
         """Emojilerle anlatılan oyunu tahmin et! (5dk bekleme süresi)"""
+        # Adminler için cooldown sıfırla
+        if ctx.author.guild_permissions.administrator:
+            ctx.command.reset_cooldown(ctx)
+
         if not self.emoji_games:
-            await ctx.send("Oyun veritabanı boş veya yüklenemedi!")
-            return
+            # Tekrar yüklemeyi dene
+            try:
+                with open("emoji_games.json", "r", encoding="utf-8") as f:
+                    self.emoji_games = json.load(f)
+            except Exception as e:
+                await ctx.send(f"Oyun veritabanı yüklenemedi: {e}")
+                return
 
         game_data = random.choice(self.emoji_games)
         correct_answer = game_data["name"]
@@ -838,9 +847,12 @@ class Economy(commands.Cog):
         normalized_answer = normalize(correct_answer)
         normalized_aliases = [normalize(a) for a in aliases]
         
+        # JSON'da 'emoji' anahtarı kullanılıyor, kodda 'emojis' kalmış olabilir.
+        emoji_str = game_data.get("emoji", game_data.get("emojis", "❓"))
+
         embed = discord.Embed(
             title="🎮 HANGİ OYUN BU?",
-            description=f"❓ **Soru:** {game_data['emojis']}\n\n"
+            description=f"❓ **Soru:** {emoji_str}\n\n"
                         f"⏱️ **Süre:** 30 Saniye\n"
                         f"Cevabı direkt sohbete yazın!",
             color=discord.Color.blue()
@@ -878,7 +890,7 @@ class Economy(commands.Cog):
 
         except asyncio.TimeoutError:
             # İpucu Zamanı
-            embed.description = f"❓ **Soru:** {game_data['emojis']}\n\n" \
+            embed.description = f"❓ **Soru:** {emoji_str}\n\n" \
                                 f"💡 **İpucu:** {game_data['hint']}\n" \
                                 f"⏱️ **Süre:** Son 15 Saniye!"
             embed.color = discord.Color.gold()
@@ -913,6 +925,11 @@ class Economy(commands.Cog):
 
     @bilmece.error
     async def bilmece_error(self, ctx, error):
+        # Admin ise hatayı yoksay (zaten resetledik ama yine de düşebilir)
+        if ctx.author.guild_permissions.administrator and isinstance(error, commands.CommandOnCooldown):
+             await ctx.reinvoke()
+             return
+
         if isinstance(error, commands.CommandOnCooldown):
             await ctx.send(f"⏳ Biraz soluklan! Bu komutu tekrar kullanmak için **{error.retry_after:.0f} saniye** beklemelisin.")
 
