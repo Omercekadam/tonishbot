@@ -267,10 +267,35 @@ class SlotView(discord.ui.View):
         
         await interaction.edit_original_response(embed=new_embed, view=self)
 
+class SystemBreakerSession:
+    def __init__(self, user_id):
+        self.user_id = user_id
+        self.secret_code = self.generate_code()
+        self.attempts_left = 10
+        self.history = []  # List of (guess, green, yellow)
+
+    def generate_code(self):
+        """0-9 arası 5 benzersiz rakam seçer."""
+        digits = list("0123456789")
+        random.shuffle(digits)
+        return "".join(digits[:5])
+
+    def check_guess(self, guess):
+        """Tahmini kontrol eder ve (green, yellow) döner."""
+        green = 0
+        yellow = 0
+        for i, char in enumerate(guess):
+            if char == self.secret_code[i]:
+                green += 1
+            elif char in self.secret_code:
+                yellow += 1
+        return green, yellow
+
 class Economy(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.monthly_check.start() 
+        self.monthly_check.start()
+        self.system_breaker_games = {} # user_id -> SystemBreakerSession 
 
     async def cog_load(self):
         async with aiosqlite.connect(DB_PATH) as db:
@@ -397,6 +422,109 @@ class Economy(commands.Cog):
         message = await ctx.send(embed=embed, view=view)
         
         view.message = message
+
+    @commands.command(name="sistemkirici", aliases=["hacker", "hardcore"])
+    async def sistem_kirici(self, ctx):
+        """Sistem Kırıcı (Hardcore Mod) oyununu başlatır. Giriş: 100 Coin."""
+        user_id = ctx.author.id
+        
+        # Zaten oyunda mı?
+        if user_id in self.system_breaker_games:
+            await ctx.send("Zaten devam eden bir 'Sistem Kırıcı' görevin var! `!tahmin <sayı>` ile devam et.")
+            return
+
+        # Bakiye kontrolü
+        balance = await self.get_balance(user_id)
+        entry_fee = 100
+        if balance < entry_fee:
+            await ctx.send(f"Yetersiz bakiye! 🚫 Bu göreve girmek için **{entry_fee}** tonish coin gerekiyor. Mevcut: **{balance}**")
+            return
+
+        # Ücreti al ve oyunu başlat
+        await self.update_balance(user_id, -entry_fee)
+        self.system_breaker_games[user_id] = SystemBreakerSession(user_id)
+        
+        embed = discord.Embed(
+            title="💻 SİSTEM KIRICI (HARDCORE) BAŞLADI",
+            description=f"**Hedef:** 5 Haneli Şifreyi Çöz (Rakamlar benzersiz!)\n"
+                        f"**Hak:** 10 Deneme\n"
+                        f"**Ödül:** Kalan hakka göre artar!\n\n"
+                        f"Tahmin yapmak için: `!tahmin 12345` yaz.",
+            color=discord.Color.dark_red()
+        )
+        embed.set_footer(text="Sistem güvenliği: YÜKSEK 🔒")
+        await ctx.send(embed=embed)
+
+    @commands.command(name="tahmin")
+    async def tahmin(self, ctx, guess: str):
+        """Sistem Kırıcı oyunu için tahmin yap."""
+        user_id = ctx.author.id
+        
+        if user_id not in self.system_breaker_games:
+            await ctx.send("Aktif bir 'Sistem Kırıcı' oyunun yok. `!sistemkirici` yazarak başla!")
+            return
+
+        game = self.system_breaker_games[user_id]
+        
+        # Validasyon
+        if not guess.isdigit() or len(guess) != 5:
+            await ctx.send("⚠️ Hata: Şifre **5 rakamdan** oluşmalı! (Örn: 80294)")
+            return
+        
+        if len(set(guess)) != 5:
+            await ctx.send("⚠️ Hata: Şifredeki rakamlar **birbirinden farklı** olmalı!")
+            return
+
+        # Tahmini işle
+        game.attempts_left -= 1
+        green, yellow = game.check_guess(guess)
+        game.history.append((guess, green, yellow))
+
+        # KAZANDI MI?
+        if green == 5:
+            # Ödül Hesaplama: 200 + (Kalan Hak x 100 / 2)
+            bonus = (game.attempts_left * 100) // 2
+            total_reward = 200 + bonus
+            
+            await self.update_balance(user_id, total_reward)
+            del self.system_breaker_games[user_id]
+            
+            embed = discord.Embed(
+                title="🔓 SİSTEM HACKLENDİ! BAŞARILI!",
+                description=f"**Şifre:** `{guess}`\n"
+                            f"**Kalan Hak:** {game.attempts_left}\n"
+                            f"**Kazanç:** {total_reward} tonish coin 💰",
+                color=discord.Color.green()
+            )
+            await ctx.send(embed=embed)
+            return
+
+        # KAYBETTİ Mİ?
+        if game.attempts_left <= 0:
+            secret = game.secret_code
+            del self.system_breaker_games[user_id]
+            
+            embed = discord.Embed(
+                title="🚫 SİSTEM KİLİTLENDİ! BAŞARISIZ!",
+                description=f"Hakkın bitti. Sistem kendini imha etti.\n"
+                            f"**Doğru Şifre:** `{secret}`",
+                color=discord.Color.red()
+            )
+            await ctx.send(embed=embed)
+            return
+
+        # DEVAM EDİYOR - Durum Göster
+        history_text = ""
+        for g, gr, ye in game.history:
+            history_text += f"`{g}` -> 🟩{gr} 🟨{ye}\n"
+
+        embed = discord.Embed(
+            title=f"Sistem Analizi 📟 (Kalan Hak: {game.attempts_left})",
+            description=f"Son Tahmin: `{guess}`\n\n"
+                        f"**Geçmiş Tahminler:**\n{history_text}",
+            color=discord.Color.orange()
+        )
+        await ctx.send(embed=embed)
 
     def create_circular_mask(self, size):
         mask = Image.new("L", size, 0)
