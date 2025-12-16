@@ -511,30 +511,30 @@ class SystemBreakerSession:
         self.hints_left -= 1
         return hint
 
-class SystemBreakerView(discord.ui.View):
-    def __init__(self, ctx, cog, game):
-        super().__init__(timeout=300)
-        self.ctx = ctx
-        self.cog = cog
-        self.game = game
-        self.update_button_label()
+# class SystemBreakerView(discord.ui.View):
+#     def __init__(self, ctx, cog, game):
+#         super().__init__(timeout=300)
+#         self.ctx = ctx
+#         self.cog = cog
+#         self.game = game
+#         self.update_button_label()
 
-    def update_button_label(self):
-        self.children[0].label = f"💡 İpucu Al ({self.game.hints_left})"
-        self.children[0].disabled = self.game.hints_left <= 0
+#     def update_button_label(self):
+#         self.children[0].label = f"💡 İpucu Al ({self.game.hints_left})"
+#         self.children[0].disabled = self.game.hints_left <= 0
 
-    @discord.ui.button(label="💡 İpucu Al", style=discord.ButtonStyle.blurple)
-    async def hint_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.id != self.ctx.author.id:
-            await interaction.response.send_message("Bu senin oyunun değil!", ephemeral=True)
-            return
+#     @discord.ui.button(label="💡 İpucu Al", style=discord.ButtonStyle.blurple)
+#     async def hint_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+#         if interaction.user.id != self.ctx.author.id:
+#             await interaction.response.send_message("Bu senin oyunun değil!", ephemeral=True)
+#             return
 
-        hint = self.game.get_hint()
-        if not hint:
-            await interaction.response.send_message("İpucu hakkın kalmadı veya verilecek ipucu yok!", ephemeral=True)
-            return
+#         hint = self.game.get_hint()
+#         if not hint:
+#             await interaction.response.send_message("İpucu hakkın kalmadı veya verilecek ipucu yok!", ephemeral=True)
+#             return
 
-        self.update_button_label()
+#         self.update_button_label()
         
         # Embed güncelleme
         embed = interaction.message.embeds[0]
