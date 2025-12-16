@@ -511,50 +511,6 @@ class SystemBreakerSession:
         self.hints_left -= 1
         return hint
 
-class SystemBreakerView(discord.ui.View):
-    def __init__(self, ctx, cog, game):
-        super().__init__(timeout=300)
-        self.ctx = ctx
-        self.cog = cog
-        self.game = game
-        # self.update_button_label()
-
-    # def update_button_label(self):
-    #     self.children[0].label = f"💡 İpucu Al ({self.game.hints_left})"
-    #     self.children[0].disabled = self.game.hints_left <= 0
-
-    # @discord.ui.button(label="💡 İpucu Al", style=discord.ButtonStyle.blurple)
-    # async def hint_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-    #     if interaction.user.id != self.ctx.author.id:
-    #         await interaction.response.send_message("Bu senin oyunun değil!", ephemeral=True)
-    #         return
-
-    #     hint = self.game.get_hint()
-    #     if not hint:
-    #         await interaction.response.send_message("İpucu hakkın kalmadı veya verilecek ipucu yok!", ephemeral=True)
-    #         return
-
-    #     self.update_button_label()
-        
-        # Embed güncelleme
-        embed = interaction.message.embeds[0]
-        
-        # İpuçlarını string yap
-        hints_str = "\n".join([f"• {h}" for h in self.game.given_hints])
-        
-        # Field kontrolü
-        found_field = False
-        for i, field in enumerate(embed.fields):
-            if field.name == "� İpuçları":
-                embed.set_field_at(i, name="� İpuçları", value=hints_str, inline=False)
-                found_field = True
-                break
-        
-        if not found_field:
-            embed.add_field(name="� İpuçları", value=hints_str, inline=False)
-
-        await interaction.response.edit_message(embed=embed, view=self)
-        await interaction.followup.send(f"Yeni İpucu: **{hint}**", ephemeral=True)
 
 class Economy(commands.Cog):
     def __init__(self, bot):
@@ -731,8 +687,7 @@ class Economy(commands.Cog):
             hints_str = "\n".join([f"• {h}" for h in self.system_breaker_games[user_id].given_hints])
             embed.add_field(name="💡 İpuçları", value=hints_str, inline=False)
         
-        view = SystemBreakerView(ctx, self, self.system_breaker_games[user_id])
-        await ctx.send(embed=embed, view=view)
+        await ctx.send(embed=embed)
 
     @commands.command(name="zindan", aliases=["dungeon", "rpg"])
     async def zindan(self, ctx):
@@ -828,8 +783,7 @@ class Economy(commands.Cog):
             hints_str = "\n".join([f"• {h}" for h in game.given_hints])
             embed.add_field(name="💡 İpuçları", value=hints_str, inline=False)
             
-        view = SystemBreakerView(ctx, self, game)
-        await ctx.send(embed=embed, view=view)
+        await ctx.send(embed=embed)
 
     @commands.command(name="bilmece")
     @commands.cooldown(1, 300, commands.BucketType.user)
