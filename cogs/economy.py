@@ -450,6 +450,10 @@ class SystemBreakerSession:
         self.given_hints = []
         self.available_hints = []
         self.generate_possible_hints()
+        
+        # Otomatik 3 ipucu ver
+        for _ in range(3):
+            self.get_hint()
 
     def generate_code(self):
         """0-9 arası 5 benzersiz rakam seçer."""
@@ -722,6 +726,11 @@ class Economy(commands.Cog):
         )
         embed.set_footer(text=f"Oyuncu: {ctx.author.display_name} | Sistem güvenliği: YÜKSEK 🔒", icon_url=ctx.author.avatar.url if ctx.author.avatar else None)
         
+        # Başlangıç ipuçlarını ekle
+        if self.system_breaker_games[user_id].given_hints:
+            hints_str = "\n".join([f"• {h}" for h in self.system_breaker_games[user_id].given_hints])
+            embed.add_field(name="💡 İpuçları", value=hints_str, inline=False)
+        
         view = SystemBreakerView(ctx, self, self.system_breaker_games[user_id])
         await ctx.send(embed=embed, view=view)
 
@@ -768,8 +777,8 @@ class Economy(commands.Cog):
 
         # KAZANDI MI?
         if green == 5:
-            # Ödül Hesaplama: 200 + (Kalan Hak x 100 / 2)
-            bonus = (game.attempts_left * 100) // 2
+            # Ödül Hesaplama: 200 + (Kalan Hak x 50 / 2)
+            bonus = (game.attempts_left * 50) // 2
             total_reward = 200 + bonus
             
             await self.update_balance(user_id, total_reward)
