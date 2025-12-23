@@ -369,5 +369,25 @@ sudo systemctl restart systemd-resolved
 sudo systemctl restart tonishbot
 ```
 
+## 9. GitHub Token Süresi Dolunca (Authentication Failed Hatası)
+
+Eğer `git pull` yaparken "Authentication failed" veya "Password authentication was removed" hatası alıyorsanız, tokeninizin süresi dolmuştur.
+
+1. **Yeni Token Alın:** GitHub'dan yeni bir token oluşturun (önceki adımlardaki gibi).
+2. **Sunucuda URL'yi Güncelleyin:**
+   Sunucuya bağlandıktan sonra proje klasörüne gidin ve şu komutu düzenleyerek yapıştırın:
+
+```bash
+cd /home/tonishbot
+git remote set-url origin https://KULLANICI_ADI:YENI_TOKEN@github.com/KULLANICI_ADI/tonishbot.git
+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
+```
+
+> **Örnek:** > `git remote set-url origin https://Omercekadam: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@github.com/Omercekadam/tonishbot.git`
+
+3. **Test Edin:**
+   `git pull` yazarak hatasız çalıştığını doğrulayın.
+
 ## ZORLA KAPATMA
+
 sudo systemctl kill -s SIGKILL tonishbot

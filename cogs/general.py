@@ -70,7 +70,7 @@ class General(commands.Cog):
         )
         await ctx.send(message_content)
 
-    @commands.command()
+    @commands.command(name="yardim", aliases=["help", "komutlar", "komut","kodlar","yardım"])
     async def yardim(self, ctx):
         """
         Botun komutlarını listeleyen yardım menüsü.
