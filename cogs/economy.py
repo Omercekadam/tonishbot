@@ -301,10 +301,10 @@ class BlackjackView(discord.ui.View):
 
         if dealer_score > 21:
             result_message += f"**Kurpiyer Yandı!** Sen kazandın 🎉 **{winnings}** tonish coin aldın."
-            await self.cog.update_balance(self.ctx.author.id, winnings) 
+            await self.cog.update_balance(self.ctx.author.id, winnings/2) 
         elif player_score > dealer_score:
             result_message += f"**Kazandın!** 🎉 **{winnings}** tonish coin aldın."
-            await self.cog.update_balance(self.ctx.author.id, winnings) 
+            await self.cog.update_balance(self.ctx.author.id, winnings/2) 
         elif dealer_score > player_score:
             result_message += f"**Kaybettin...** 😥 **{self.bet}** tonish coin kaybettin."
             await self.cog.update_balance(self.ctx.author.id, -self.bet) 
