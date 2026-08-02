@@ -335,7 +335,7 @@ ikisi birlikte yoğun anlarda gelen `database is locked` hatalarını ortadan ka
 </details>
 
 <details>
-<summary><b>🧯 Hiçbir hata sessizce kaybolmaz — ve hiçbir istisna kullanıcıya sızmaz</b></summary>
+<summary><b>🧯 Hiçbir hata sessizce kaybolmaz ve hiçbir istisna kullanıcıya sızmaz</b></summary>
 
 <br>
 
@@ -429,7 +429,7 @@ idempotenttir. Veritabanları `.gitignore` ile dışlanmıştır — üye verisi
 - **Yetki kontrolleri komut seviyesinde**: yönetim komutları admin, `!cek*` komutları
   yalnızca `CEK_DISCORD_ID`, ticket kapatma yalnızca sahibi veya moderatör.
 - **Üretimde ayrıcalıksız çalışır**: adanmış sistem kullanıcısı, `NoNewPrivileges`,
-  `ProtectSystem=strict`, `PrivateTmp` ve cgroup bellek limitleriyle — bkz.
+  `ProtectSystem=strict`, `PrivateTmp` ve cgroup bellek limitleriyle - bkz.
   [DEPLOYMENT.md](DEPLOYMENT.md).
 
 Bir güvenlik açığı fark edersen lütfen herkese açık issue açmak yerine doğrudan iletişime geç.

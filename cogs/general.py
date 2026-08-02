@@ -312,44 +312,38 @@ class General(commands.Cog):
         )
 
         embed.add_field(
-            name="🏛️ Yönetim Kurulu Üyeleri",
-            value="Yurdakul Efe Arıkan\nÖmer Soysal\nMehmet Boran Bulut\nEbru Karademir\nOğulcan Danişment",
-            inline=False
-        )
-
-        embed.add_field(
-            name="📅 Organizasyon Koordinatörü",
-            value="İbrahim Ata Gültekin",
+            name="📅 Yazılım ve Teknoloji Sorumlusu",
+            value="Ömer Soysal",
             inline=True
         )
 
         embed.add_field(
             name="🌍 Dış İlişkiler Koordinatörü",
-            value="Kerem Çetin",
+            value="Boran Bulut",
             inline=True
         )
 
         embed.add_field(
             name="📱 Sosyal Medya Koordinatörü",
-            value="Muhammed Alper Kuvar",
+            value="Ebru Karademir",
             inline=True
         )
 
         embed.add_field(
             name="💰 Sponsorluk Sorumlusu",
-            value="Kaan Mersin",
+            value="Kerem Çetin",
             inline=True
         )
 
         embed.add_field(
             name="📣 İletişim Sorumlusu",
-            value="Ömer Çelik",
+            value="Yusuf Dervent",
             inline=True
         )
 
         embed.add_field(
             name="👾 Game Jam Sorumlusu",
-            value="Oğulcan Danişment",
+            value="Ata Gültekin",
             inline=True
         )
 
@@ -361,30 +355,13 @@ class General(commands.Cog):
 
         embed.add_field(
             name="🎨 Tasarımcı - Editör",
-            value="Beyzanur Boduroğlu\nYusuf Dervent",
-            inline=True
-        )
-
-        embed.add_field(
-            name="✍️ İçerik Üreticisi",
-            value="Ebru Karademir",
-            inline=True
-        )
-
-        embed.add_field(
-            name="🎥 Kameraman",
-            value="Feyzanur Sarı",
-            inline=True
-        )
-
-        embed.add_field(
-            name="💬 Discord Sorumlusu",
             value="Yusuf Dervent",
             inline=True
         )
+
         embed.add_field(
             name="🎉 Etkinlik Görevlileri",
-            value="Bahadır Bildiren\nSudenaz Çolak\nYusuf Çınar Üstal",
+            value="Bahadır Bildiren\nSudenaz Çolak\nDemirhan Bozdoğan\nEnes Aygün",
             inline=False
         )
 
