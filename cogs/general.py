@@ -25,9 +25,10 @@ class General(commands.Cog):
 
         uyeolma_link = "https://sks.nisantasi.edu.tr/uye-talep"
         instagram_link = "https://www.instagram.com/nishdott"
+        tiktok_link = "https://www.tiktok.com/@nishdott"
         linkedin_link = "https://www.linkedin.com/company/nishdot/about"
         whatsapp_link = "https://chat.whatsapp.com/DiufgZg3t1C2a4Y5L4iOLi"
-        discord_link = "https://discord.gg/ddumxQaG"
+        discord_link = "https://discord.com/invite/fch8HnsKwE"
         youtube_link = "https://www.youtube.com/@nishdot"
 
         embed = discord.Embed(
@@ -44,6 +45,7 @@ class General(commands.Cog):
         embed.add_field(
             name="🌐 Sosyal Medya",
             value=f"📸 **[Instagram]({instagram_link})**\n"
+                  f"🎵 **[TikTok]({tiktok_link})**\n"
                   f"💼 **[LinkedIn]({linkedin_link})**\n"
                   f"▶️ **[YouTube]({youtube_link})**",
             inline=True
