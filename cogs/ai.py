@@ -61,20 +61,16 @@ class AI(commands.Cog):
             self.model = genai.GenerativeModel(
                 # flash-lite: en düşük gecikme, en ucuz flash-tier model — bizim
                 # ihtiyacımız (basit sohbet) için thinking gerekmiyor, o yüzden
-                # tam boy flash yerine lite kullanıyoruz. Google'ın model isimleri
-                # zamanla değişiyor/eskiyor; bu değer tekrar kırılırsa
-                # https://ai.google.dev/gemini-api/docs/models adresinden güncel
-                # flash-lite model adını buraya yazın.
+                # tam boy flash yerine lite kullanıyoruz. flash-lite varsayılan
+                # olarak zaten "minimal" thinking seviyesiyle çalışıyor, ekstra
+                # yapılandırma gerekmiyor. (Not: ThinkingConfig/thinking_config
+                # sadece yeni google.genai SDK'sında var, bu projenin kullandığı
+                # eski google.generativeai paketinde YOK — burada kullanmayın.)
+                # Google'ın model isimleri zamanla değişiyor/eskiyor; bu değer
+                # tekrar kırılırsa https://ai.google.dev/gemini-api/docs/models
+                # adresinden güncel flash-lite model adını buraya yazın.
                 'gemini-3.5-flash-lite',
                 system_instruction=SISTEM_TALIMATI,
-                # flash-lite varsayılan olarak zaten "minimal" thinking seviyesiyle
-                # çalışıyor ama thinking_budget=0 ile bunu garantiye alıyoruz —
-                # sohbet botu için hiç gerek yok. (requirements.txt'de
-                # google-generativeai>=0.8.6 gerekir — eski 0.7.1'de ThinkingConfig
-                # serileştirmesi güvenilir değil.)
-                generation_config=genai.types.GenerationConfig(
-                    thinking_config=genai.types.ThinkingConfig(thinking_budget=0)
-                ),
             )
         else:
             log.warning("GEMINI_API_KEY bulunamadı — AI komutları devre dışı.")
