@@ -1,19 +1,35 @@
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 import aiosqlite
 import random
-import os
-import io
 import io
 import json
+import logging
+import time
 import asyncio
-from datetime import datetime, time, timezone
+from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
+
+log = logging.getLogger(__name__)
 
 DB_PATH = "economy.db"
 LEADERBOARD_BG = "liderlik_bg.png"
 FONT_BOLD = "Roboto-Bold.ttf"
 FONT_REGULAR = "Roboto-Regular.ttf"
+
+# SQLite kilit bekleme süresi (saniye) — eşzamanlı komutlarda "database is locked" önler
+DB_TIMEOUT = 30
+
+# !gunluk ayarları (bellek yerine veritabanında tutulur, restart'a dayanıklı)
+DAILY_AMOUNT = 50
+DAILY_COOLDOWN = 86400  # 24 saat
+
+# Terk edilmiş Sistem Kırıcı oturumu bu süreden sonra bayat sayılır
+SB_SESSION_TIMEOUT = 1800  # 30 dakika
+
+# Oyun giriş ücretleri
+ZINDAN_UCRETI = 50
+SISTEMKIRICI_UCRETI = 100
 
 KART_DEGERLERI = {
     '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
@@ -103,7 +119,8 @@ class DungeonGame(discord.ui.View):
             color = discord.Color.green() if win else discord.Color.red()
             self.stop()
             self.clear_items()
-            
+            self.cog.finish_game(self.ctx.author.id)
+
         embed = discord.Embed(title=f"⚔️ ZİNDAN SAVAŞI - TUR {self.turn_count}", description=desc, color=color)
         embed.set_footer(text=f"Oyuncu: {self.ctx.author.display_name}", icon_url=self.ctx.author.avatar.url if self.ctx.author.avatar else None)
         
@@ -111,6 +128,21 @@ class DungeonGame(discord.ui.View):
             await self.message.edit(embed=embed, view=None if game_over else self)
         else:
             self.message = await self.ctx.send(embed=embed, view=self)
+
+    async def on_timeout(self):
+        """Oyuncu 3 dakika hamle yapmazsa savaşı terk etmiş sayılır."""
+        self.cog.finish_game(self.ctx.author.id)
+        if self.message:
+            try:
+                embed = discord.Embed(
+                    title="⌛ ZİNDAN TERK EDİLDİ",
+                    description="Uzun süre hamle yapmadın, zindandan sürüklenerek çıkarıldın. "
+                                "Giriş ücreti iade edilmez.",
+                    color=discord.Color.dark_grey(),
+                )
+                await self.message.edit(embed=embed, view=None)
+            except discord.HTTPException:
+                log.exception("Zindan zaman aşımı mesajı güncellenemedi")
 
     async def enemy_turn(self, player_defending=False):
         if self.enemy["hp"] <= 0:
@@ -240,13 +272,25 @@ class BlackjackView(discord.ui.View):
         self.dealer_hand.append(self.deck.pop())
 
     async def on_timeout(self):
+        # Bahis oyun başında escrow'a alındı. Zaman aşımı = pes etme, bahis yanar.
+        # (Eskiden hiçbir kesinti yapılmadığı için oyuncular kötü eli bekleyip
+        #  bedava çıkabiliyordu.)
+        self.cog.finish_game(self.ctx.author.id)
         if self.message:
-            await self.message.edit(content="Zaman aşımı! Oyun iptal edildi. Bahis iade edilmedi.", view=None, embed=None)
+            try:
+                await self.message.edit(
+                    content=f"⌛ Zaman aşımı! Hamle yapmadığın için el düştü, "
+                            f"**{self.bet}** tonish coin yandı.",
+                    view=None, embed=None,
+                )
+            except discord.HTTPException:
+                log.exception("Blackjack zaman aşımı mesajı güncellenemedi")
 
     async def update_message(self, content, game_over=False):
         """Oyun durumunu gösteren mesajı günceller."""
         if game_over:
-            self.stop() 
+            self.stop()
+            self.cog.finish_game(self.ctx.author.id)
             await self.message.edit(content=content, view=None, embed=None)
         else:
             player_score = el_hesapla(self.player_hand)
@@ -268,14 +312,14 @@ class BlackjackView(discord.ui.View):
         player_score = el_hesapla(self.player_hand)
         
         if player_score > 21:
-            await self.cog.update_balance(self.ctx.author.id, -self.bet) 
+            # Bahis oyun başında düşüldü; kaybedince ek bir kesinti yok.
             await self.update_message(
                 f"**Yandın!** (Bust) 💥\n"
                 f"Elin: {kartlari_goster(self.player_hand)} (Toplam: {player_score})\n"
                 f"**{self.bet}** tonish coin kaybettin.",
                 game_over=True
             )
-            return True 
+            return True
         
         if player_score == 21:
             await self.dealer_turn(interaction)
@@ -297,18 +341,20 @@ class BlackjackView(discord.ui.View):
             f"Kurpiyerin Eli: {kartlari_goster(self.dealer_hand)} (Toplam: {dealer_score})\n\n"
         )
 
-        winnings = int(self.bet * 2) 
-
+        # Bahis oyun başında escrow'a alındı. Buradaki tüm hareketler İADE/ÖDÜL:
+        #   kazanç  -> 2x bahis geri yatar (bahis + eşit kazanç, net +bahis)
+        #   berabere -> sadece bahis geri yatar (net 0)
+        #   kayıp   -> hiçbir şey yatmaz (net -bahis)
         if dealer_score > 21:
-            result_message += f"**Kurpiyer Yandı!** Sen kazandın 🎉 **{winnings}** tonish coin aldın."
-            await self.cog.update_balance(self.ctx.author.id, int(winnings/2)) 
+            await self.cog.update_balance(self.ctx.author.id, self.bet * 2)
+            result_message += f"**Kurpiyer Yandı!** Sen kazandın 🎉 **{self.bet}** tonish coin kâr ettin."
         elif player_score > dealer_score:
-            result_message += f"**Kazandın!** 🎉 **{winnings}** tonish coin aldın."
-            await self.cog.update_balance(self.ctx.author.id, int(winnings/2)) 
+            await self.cog.update_balance(self.ctx.author.id, self.bet * 2)
+            result_message += f"**Kazandın!** 🎉 **{self.bet}** tonish coin kâr ettin."
         elif dealer_score > player_score:
             result_message += f"**Kaybettin...** 😥 **{self.bet}** tonish coin kaybettin."
-            await self.cog.update_balance(self.ctx.author.id, -self.bet) 
         else:
+            await self.cog.update_balance(self.ctx.author.id, self.bet)
             result_message += "**Berabere!** Bahsin iade edildi."
 
         await self.update_message(result_message, game_over=True)
@@ -364,19 +410,17 @@ class SlotView(discord.ui.View):
 
         await interaction.response.defer()
 
-        # Bakiye Kontrolü
+        # Bahsi tek atomik işlemde düş — yetersizse hiçbir şey değişmez.
+        # (Hızlı çift tıklamada çift harcamayı ve eksi bakiyeyi engeller.)
         user_id = self.ctx.author.id
-        balance = await self.cog.get_balance(user_id)
-
-        if balance < self.bet:
+        if not await self.cog.try_spend(user_id, self.bet):
+            balance = await self.cog.get_balance(user_id)
             await interaction.followup.send(
                 f"Yetersiz bakiye! 😥 Oynamak için **{self.bet}** tonish coin'e ihtiyacın var. "
-                f"Mevcut bakiyen: **{balance}**\nParan olunca tekrar dene!", 
+                f"Mevcut bakiyen: **{balance}**\nParan olunca tekrar dene!",
                 ephemeral=True
             )
             return
-
-        await self.cog.update_balance(user_id, -self.bet)
 
         # Slot Çevirme
         spin_sonucu = random.choices(SLOT_SEMBOLLERI, weights=SLOT_AGIRLIKLARI, k=3)
@@ -443,6 +487,7 @@ class SlotView(discord.ui.View):
 class SystemBreakerSession:
     def __init__(self, user_id):
         self.user_id = user_id
+        self.started_at = time.time()  # bayat oturumları temizlemek için
         self.secret_code = self.generate_code()
         self.attempts_left = 10
         self.history = []  # List of (guess, green, yellow)
@@ -515,23 +560,57 @@ class SystemBreakerSession:
 class Economy(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.monthly_check.start()
-        self.system_breaker_games = {} # user_id -> SystemBreakerSession 
+        self.system_breaker_games = {} # user_id -> SystemBreakerSession
+        # Aynı anda birden fazla bahisli oyun açılmasını engeller.
+        # (Eskiden aynı bakiyeyle N tane blackjack açılıp bakiye eksiye düşürülebiliyordu.)
+        self.active_games = {}  # user_id -> oyun adı
 
     async def cog_load(self):
-        async with aiosqlite.connect(DB_PATH) as db:
-            await db.execute("CREATE TABLE IF NOT EXISTS economy (user_id INTEGER PRIMARY KEY, balance INTEGER DEFAULT 100)")
+        async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
+            # WAL kalıcı bir dosya ayarıdır, bir kez açmak yeterli.
+            # Eşzamanlı okuma/yazmada "database is locked" hatalarını azaltır.
+            await db.execute("PRAGMA journal_mode=WAL")
+            await db.execute(
+                "CREATE TABLE IF NOT EXISTS economy ("
+                "user_id INTEGER PRIMARY KEY, "
+                "balance INTEGER DEFAULT 100, "
+                "last_daily INTEGER DEFAULT 0)"
+            )
+
+            # Mevcut veritabanları için idempotent migration
+            async with db.execute("PRAGMA table_info(economy)") as cursor:
+                kolonlar = {row[1] for row in await cursor.fetchall()}
+            if "last_daily" not in kolonlar:
+                log.info("economy tablosuna last_daily kolonu ekleniyor")
+                await db.execute("ALTER TABLE economy ADD COLUMN last_daily INTEGER DEFAULT 0")
+
             await db.commit()
-            
+
         try:
             with open("emoji_games.json", "r", encoding="utf-8") as f:
                 self.emoji_games = json.load(f)
-        except Exception as e:
-            print(f"Emoji oyunları yüklenemedi: {e}")
+        except Exception:
+            log.exception("Emoji oyunları yüklenemedi")
             self.emoji_games = []
 
+    # --- Oyun eşzamanlılık kilidi -------------------------------------------------
+
+    def start_game(self, user_id, oyun_adi) -> str | None:
+        """Kilidi almaya çalışır. Başarılıysa None, meşgulse mevcut oyunun adını döner."""
+        mevcut = self.active_games.get(user_id)
+        if mevcut:
+            return mevcut
+        self.active_games[user_id] = oyun_adi
+        return None
+
+    def finish_game(self, user_id):
+        """Oyun bittiğinde/zaman aşımına uğradığında kilidi bırakır."""
+        self.active_games.pop(user_id, None)
+
+    # --- Bakiye ------------------------------------------------------------------
+
     async def get_balance(self, user_id):
-        async with aiosqlite.connect(DB_PATH) as db:
+        async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
             await db.execute("INSERT OR IGNORE INTO economy (user_id) VALUES (?)", (user_id,))
             await db.commit()
             async with db.execute("SELECT balance FROM economy WHERE user_id = ?", (user_id,)) as cursor:
@@ -539,12 +618,34 @@ class Economy(commands.Cog):
                 return row[0] if row else 100
 
     async def update_balance(self, user_id, amount):
-        async with aiosqlite.connect(DB_PATH) as db:
+        """Bakiyeye ekler/çıkarır. Harcama için try_spend kullan — bu negatifi engellemez."""
+        async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
             await db.execute("INSERT OR IGNORE INTO economy (user_id) VALUES (?)", (user_id,))
             await db.execute("UPDATE economy SET balance = balance + ? WHERE user_id = ?", (amount, user_id))
             await db.commit()
 
+    async def try_spend(self, user_id, amount) -> bool:
+        """
+        Bakiyeden atomik olarak düşer.
+
+        Tek bir koşullu UPDATE kullanır: bakiye yetmiyorsa hiçbir satır güncellenmez
+        ve False döner. Bu, "önce oku, sonra yaz" arasındaki await'lerde oluşan
+        çift harcamayı (TOCTOU) ve eksi bakiyeyi tamamen kapatır.
+        """
+        if amount <= 0:
+            raise ValueError(f"try_spend pozitif miktar bekler, {amount} verildi")
+
+        async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
+            await db.execute("INSERT OR IGNORE INTO economy (user_id) VALUES (?)", (user_id,))
+            cursor = await db.execute(
+                "UPDATE economy SET balance = balance - ? WHERE user_id = ? AND balance >= ?",
+                (amount, user_id, amount),
+            )
+            await db.commit()
+            return cursor.rowcount > 0
+
     @commands.command(name="bakiyeguncelle")
+    @commands.guild_only()
     @commands.has_permissions(administrator=True)
     async def bakiyeguncelle(self, ctx, member: discord.Member, amount: int):
         """Belirtilen kullanıcının bakiyesini 'amount' kadar artırır/azaltır. (Yönetici komutu)"""
@@ -556,30 +657,69 @@ class Economy(commands.Cog):
         
         await ctx.send(f"✅ {member.display_name} kullanıcısının yeni bakiyesi: **{new_balance}** tonish coin 💸")
 
-    @commands.command()
+    @commands.command(aliases=["tonishcoin", "cuzdan"])
+    @commands.guild_only()
     async def bakiye(self, ctx, member: discord.Member = None):
         member = member or ctx.author
         bal = await self.get_balance(member.id)
         await ctx.send(f"{member.display_name}: **{bal}** tonish coin 💸")
 
     @commands.command()
-    @commands.cooldown(1, 86400, commands.BucketType.user) 
     async def gunluk(self, ctx):
-        await self.update_balance(ctx.author.id, 50)
-        bal = await self.get_balance(ctx.author.id)
-        await ctx.send(f"Günlük 50 coin aldın! Yeni bakiye: **{bal}**")
+        """Her 24 saatte bir günlük ödülü verir."""
+        # Bekleme süresi veritabanında tutulur — commands.cooldown bellekte tutulduğu
+        # için bot her yeniden başladığında sıfırlanıyordu ve sınırsız farm edilebiliyordu.
+        user_id = ctx.author.id
+        simdi = int(time.time())
+        esik = simdi - DAILY_COOLDOWN
+
+        async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
+            await db.execute("INSERT OR IGNORE INTO economy (user_id) VALUES (?)", (user_id,))
+            cursor = await db.execute(
+                "UPDATE economy SET balance = balance + ?, last_daily = ? "
+                "WHERE user_id = ? AND last_daily <= ?",
+                (DAILY_AMOUNT, simdi, user_id, esik),
+            )
+            alindi = cursor.rowcount > 0
+
+            if not alindi:
+                async with db.execute(
+                    "SELECT last_daily FROM economy WHERE user_id = ?", (user_id,)
+                ) as c2:
+                    row = await c2.fetchone()
+                son = row[0] if row else simdi
+
+            await db.commit()
+
+        if not alindi:
+            kalan = max(0, DAILY_COOLDOWN - (simdi - son))
+            saat, dakika = divmod(kalan // 60, 60)
+            return await ctx.send(
+                f"⏳ Günlük ödülünü zaten aldın! Tekrar almak için **{saat} saat {dakika} dakika** beklemelisin."
+            )
+
+        bal = await self.get_balance(user_id)
+        await ctx.send(f"Günlük {DAILY_AMOUNT} coin aldın! Yeni bakiye: **{bal}**")
 
     @commands.command(name="blackjack", aliases=["bj"])
+    @commands.guild_only()
     async def blackjack(self, ctx, bet: int):
         """Blackjack oynamak için."""
         user_id = ctx.author.id
-        balance = await self.get_balance(user_id)
-        
+
         if bet <= 0:
             await ctx.send("Lütfen geçerli bir bahis miktarı gir (0'dan büyük).")
             return
-            
-        if balance < bet:
+
+        mevcut = self.start_game(user_id, "blackjack")
+        if mevcut:
+            await ctx.send(f"Zaten devam eden bir **{mevcut}** oyunun var! Önce onu bitir.")
+            return
+
+        # Bahsi peşin al (escrow). Böylece oyuncu kötü eli terk ederek bedava çıkamaz.
+        if not await self.try_spend(user_id, bet):
+            self.finish_game(user_id)
+            balance = await self.get_balance(user_id)
             await ctx.send(f"Yetersiz bakiye! 😥 Mevcut bakiyen: **{balance}**")
             return
 
@@ -602,9 +742,15 @@ class Economy(commands.Cog):
         else:
             embed.set_author(name=f"Oynayan: {ctx.author.display_name}")
 
-        message = await ctx.send(embed=embed, view=view)
-        view.message = message 
-        
+        try:
+            view.message = await ctx.send(embed=embed, view=view)
+        except discord.HTTPException:
+            # Masayı açamadıysak bahsi iade et ve kilidi bırak
+            log.exception("Blackjack masası gönderilemedi, bahis iade ediliyor (user_id=%s)", user_id)
+            await self.update_balance(user_id, bet)
+            self.finish_game(user_id)
+            return
+
         await view.check_game_state(None)
 
     @blackjack.error
@@ -614,13 +760,20 @@ class Economy(commands.Cog):
         elif isinstance(error, commands.BadArgument):
             await ctx.send("Hoppa! 😮 Bahis miktarı bir sayı olmalı. \n**Örnek kullanım:** `!blackjack 50`")
         else:
-            print(f"Blackjack komutunda beklenmedik hata: {error}")
+            # Kilit sızmasın diye her durumda bırak
+            self.finish_game(ctx.author.id)
+            log.exception("Blackjack komutunda beklenmedik hata", exc_info=error)
             await ctx.send("Blackjack oynarken beklenmedik bir hata oluştu. 😥 Yetkiliye haber ver!")
 
     @commands.command(name="slot")
+    @commands.guild_only()
     async def slot(self, ctx, bet: int):
-        """Slot makinesini interaktif bir butonla başlatır."""
-        
+        """
+        Slot makinesini interaktif bir butonla başlatır.
+
+        Bahis her 'Çevir!' basışında düşülür (SlotView içinde atomik olarak),
+        bu yüzden makine açmak eşzamanlılık kilidi gerektirmez.
+        """
         if bet <= 0:
             await ctx.send("Lütfen geçerli bir bahis miktarı gir (0'dan büyük).")
             return
@@ -652,26 +805,34 @@ class Economy(commands.Cog):
         view.message = message
 
     @commands.command(name="sistemkirici", aliases=["hacker", "hardcore"])
+    @commands.guild_only()
     async def sistem_kirici(self, ctx):
         """Sistem Kırıcı (Hardcore Mod) oyununu başlatır. Giriş: 100 Coin."""
         user_id = ctx.author.id
-        
-        # Zaten oyunda mı?
-        if user_id in self.system_breaker_games:
-            await ctx.send("Zaten devam eden bir 'Sistem Kırıcı' görevin var! `!tahmin <sayı>` ile devam et.")
+
+        # Zaten oyunda mı? (Bayat oturumlar otomatik temizlenir)
+        mevcut = self.system_breaker_games.get(user_id)
+        if mevcut:
+            if time.time() - mevcut.started_at < SB_SESSION_TIMEOUT:
+                await ctx.send(
+                    "Zaten devam eden bir 'Sistem Kırıcı' görevin var! `!tahmin <sayı>` ile devam et, "
+                    "vazgeçmek için `!vazgec` yaz."
+                )
+                return
+            log.info("Bayat Sistem Kırıcı oturumu temizlendi (user_id=%s)", user_id)
+            del self.system_breaker_games[user_id]
+
+        # Ücreti atomik olarak al
+        if not await self.try_spend(user_id, SISTEMKIRICI_UCRETI):
+            balance = await self.get_balance(user_id)
+            await ctx.send(
+                f"Yetersiz bakiye! 🚫 Bu göreve girmek için **{SISTEMKIRICI_UCRETI}** tonish coin gerekiyor. "
+                f"Mevcut: **{balance}**"
+            )
             return
 
-        # Bakiye kontrolü
-        balance = await self.get_balance(user_id)
-        entry_fee = 100
-        if balance < entry_fee:
-            await ctx.send(f"Yetersiz bakiye! 🚫 Bu göreve girmek için **{entry_fee}** tonish coin gerekiyor. Mevcut: **{balance}**")
-            return
-
-        # Ücreti al ve oyunu başlat
-        await self.update_balance(user_id, -entry_fee)
         self.system_breaker_games[user_id] = SystemBreakerSession(user_id)
-        
+
         embed = discord.Embed(
             title="💻 SİSTEM KIRICI (HARDCORE) BAŞLADI",
             description=f"**Hedef:** 5 Haneli Şifreyi Çöz (Rakamlar benzersiz!)\n"
@@ -689,23 +850,53 @@ class Economy(commands.Cog):
         
         await ctx.send(embed=embed)
 
+    @commands.command(name="vazgec", aliases=["birak", "iptal"])
+    @commands.guild_only()
+    async def vazgec(self, ctx):
+        """Devam eden Sistem Kırıcı görevinden vazgeçer (giriş ücreti iade edilmez)."""
+        oturum = self.system_breaker_games.pop(ctx.author.id, None)
+        if not oturum:
+            return await ctx.send("Vazgeçebileceğin aktif bir 'Sistem Kırıcı' görevin yok.")
+
+        await ctx.send(
+            f"🚪 Görevden vazgeçtin. Şifre **`{oturum.secret_code}`** imiş.\n"
+            f"Giriş ücreti iade edilmez. Yeniden denemek için `!sistemkirici` yaz."
+        )
+
     @commands.command(name="zindan", aliases=["dungeon", "rpg"])
+    @commands.guild_only()
+    @commands.cooldown(1, 60, commands.BucketType.user)
     async def zindan(self, ctx):
         """Zindan Akını oyununu başlatır. Giriş: 50 Coin."""
         user_id = ctx.author.id
-        balance = await self.get_balance(user_id)
-        entry_fee = 50
-        
-        if balance < entry_fee:
-            await ctx.send(f"Yetersiz bakiye! 🚫 Zindana girmek için **{entry_fee}** tonish coin gerekiyor.")
+
+        mevcut = self.start_game(user_id, "zindan")
+        if mevcut:
+            ctx.command.reset_cooldown(ctx)
+            await ctx.send(f"Zaten devam eden bir **{mevcut}** oyunun var! Önce onu bitir.")
             return
 
-        await self.update_balance(user_id, -entry_fee)
-        
+        # Giriş ücretini atomik olarak al
+        if not await self.try_spend(user_id, ZINDAN_UCRETI):
+            self.finish_game(user_id)
+            ctx.command.reset_cooldown(ctx)
+            balance = await self.get_balance(user_id)
+            await ctx.send(
+                f"Yetersiz bakiye! 🚫 Zindana girmek için **{ZINDAN_UCRETI}** tonish coin gerekiyor. "
+                f"Mevcut: **{balance}**"
+            )
+            return
+
         game = DungeonGame(ctx, self)
-        await game.update_display()
+        try:
+            await game.update_display()
+        except discord.HTTPException:
+            log.exception("Zindan masası gönderilemedi, ücret iade ediliyor (user_id=%s)", user_id)
+            await self.update_balance(user_id, ZINDAN_UCRETI)
+            self.finish_game(user_id)
 
     @commands.command(name="tahmin")
+    @commands.guild_only()
     async def tahmin(self, ctx, guess: str):
         """Sistem Kırıcı oyunu için tahmin yap."""
         user_id = ctx.author.id
@@ -786,6 +977,7 @@ class Economy(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="bilmece")
+    @commands.guild_only()
     @commands.cooldown(1, 300, commands.BucketType.user)
     async def bilmece(self, ctx):
         """Emojilerle anlatılan oyunu tahmin et! (5dk bekleme süresi)"""
@@ -798,8 +990,9 @@ class Economy(commands.Cog):
             try:
                 with open("emoji_games.json", "r", encoding="utf-8") as f:
                     self.emoji_games = json.load(f)
-            except Exception as e:
-                await ctx.send(f"Oyun veritabanı yüklenemedi: {e}")
+            except Exception:
+                log.exception("Bilmece veritabanı yüklenemedi")
+                await ctx.send("Oyun veritabanı şu an yüklenemiyor. Bir yetkiliye haber ver. 😥")
                 return
 
         game_data = random.choice(self.emoji_games)
@@ -891,13 +1084,23 @@ class Economy(commands.Cog):
 
     @bilmece.error
     async def bilmece_error(self, ctx, error):
-        # Admin ise hatayı yoksay (zaten resetledik ama yine de düşebilir)
-        if ctx.author.guild_permissions.administrator and isinstance(error, commands.CommandOnCooldown):
-             await ctx.reinvoke()
-             return
+        if isinstance(error, commands.NoPrivateMessage):
+            return await ctx.send("Bu komut sadece sunucu içinde çalışır. 🏠")
 
         if isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(f"⏳ Biraz soluklan! Bu komutu tekrar kullanmak için **{error.retry_after:.0f} saniye** beklemelisin.")
+            # Admin ise bekleme süresini yoksay (guild_permissions sadece sunucuda var)
+            yetkili = getattr(getattr(ctx.author, "guild_permissions", None), "administrator", False)
+            if yetkili:
+                ctx.command.reset_cooldown(ctx)
+                return await ctx.reinvoke()
+
+            return await ctx.send(
+                f"⏳ Biraz soluklan! Bu komutu tekrar kullanmak için "
+                f"**{error.retry_after:.0f} saniye** beklemelisin."
+            )
+
+        log.exception("Bilmece komutunda beklenmedik hata", exc_info=error)
+        await ctx.send("Bilmece başlatılırken bir hata oluştu. 😥")
 
     def create_circular_mask(self, size):
         mask = Image.new("L", size, 0)
@@ -912,8 +1115,8 @@ class Economy(commands.Cog):
         """
         try:
             bg = Image.open(LEADERBOARD_BG).convert("RGBA")
-        except Exception as e:
-            print(f"Arkaplan yüklenemedi: {e}")
+        except OSError:
+            log.warning("Liderlik arkaplanı (%s) yüklenemedi, düz renk kullanılıyor", LEADERBOARD_BG)
             bg = Image.new("RGBA", (800, 600), (44, 47, 51, 255))
 
         draw = ImageDraw.Draw(bg)
@@ -945,8 +1148,8 @@ class Economy(commands.Cog):
                     avatar_img = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
                     avatar_img = avatar_img.resize(avatar_size)
                     bg.paste(avatar_img, (avatar_x, current_y), mask)
-                except Exception as e:
-                    print(f"Avatar işleme hatası: {e}")
+                except Exception:
+                    log.warning("Liderlik avatarı işlenemedi (%s)", username)
             
             # Yazı İşlemleri
             draw.text((rank_x, current_y + 15), f"#{rank}", font=font_rank, fill="#F4E400") 
@@ -961,6 +1164,7 @@ class Economy(commands.Cog):
         return buffer
 
     @commands.command(name="liderlik", aliases=["zenginler", "top", "leaderboard"])
+    @commands.guild_only()
     async def leaderboard(self, ctx):
         """tonish coin liderlik tablosunu GÖRSEL olarak oluşturur."""
         
@@ -979,24 +1183,21 @@ class Economy(commands.Cog):
             # 2. Verileri Hazırla (Avatar indirme vs. async yapılmalı)
             users_data = []
             for i, (uid, bal) in enumerate(rows, 1):
+                username = "Bilinmeyen Kullanıcı"
+                avatar_bytes = None
                 try:
-                    user = await self.bot.fetch_user(uid)
+                    # Önce cache'e bak — her çağrıda 5 ayrı API isteği atmayalım
+                    user = self.bot.get_user(uid) or await self.bot.fetch_user(uid)
                     username = user.display_name
-                    
-                    avatar_bytes = None
-                    if user.display_avatar:
-                        try:
-                            avatar_bytes = await user.display_avatar.read()
-                        except:
-                            pass
+                    try:
+                        avatar_bytes = await user.display_avatar.read()
+                    except discord.HTTPException:
+                        log.debug("Avatar okunamadı (user_id=%s)", uid)
                 except discord.NotFound:
-                    username = "Bilinmeyen Kullanıcı"
-                    avatar_bytes = None
-                except Exception as e:
-                    print(f"Kullanıcı getirme hatası {uid}: {e}")
-                    username = "Hata"
-                    avatar_bytes = None
-                
+                    log.info("Liderlik tablosunda silinmiş kullanıcı (user_id=%s)", uid)
+                except discord.HTTPException:
+                    log.warning("Kullanıcı getirilemedi (user_id=%s)", uid)
+
                 users_data.append((i, username, bal, avatar_bytes))
 
             # 3. Resmi Oluştur (Bloklayan işlem olduğu için executor'da çalıştır)
@@ -1007,16 +1208,9 @@ class Economy(commands.Cog):
             await ctx.send(file=file)
             await loading_msg.delete()
 
-        except Exception as e:
-            print(f"Liderlik tablosu hatası: {e}")
-            await loading_msg.edit(content=f"Bir hata oluştu: {e}")
-
-    @tasks.loop(time=time(0, 5, tzinfo=timezone.utc))
-    async def monthly_check(self):
-        """Her ayın 1'inde çalışacak periyodik görev."""
-        if datetime.now().day == 1:
-            # Buraya aylık sıfırlama veya ödül mantığı eklenebilir
-            pass
+        except Exception:
+            log.exception("Liderlik tablosu oluşturulamadı")
+            await loading_msg.edit(content="Liderlik tablosu oluşturulamadı, birazdan tekrar dene. 😥")
 
 async def setup(bot):
     await bot.add_cog(Economy(bot))

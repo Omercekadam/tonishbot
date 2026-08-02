@@ -3,11 +3,20 @@ from discord.ext import commands
 import google.generativeai as genai
 import aiosqlite
 import json
+import logging
 import os
-from datetime import datetime
+import time
+
+log = logging.getLogger(__name__)
 
 DB_PATH = "economy.db"
+DB_TIMEOUT = 30
 AI_COOLDOWN_SANIYE = 10 # AI komutunu kullanma sıklığı (saniye)
+
+# Sohbet geçmişinde tutulacak en fazla mesaj sayısı (kullanıcı + bot birlikte).
+# Sınırsız büyürse her istekte tüm geçmiş gönderilir; maliyet artar ve
+# eninde sonunda modelin context limitine çarpılır.
+MAX_HISTORY_MESAJ = 40
 
 # Botun kişiliğini ve kurallarını belirleyen sistem talimatı
 SISTEM_TALIMATI = (
@@ -52,23 +61,40 @@ class AI(commands.Cog):
                 system_instruction=SISTEM_TALIMATI
             )
         else:
-            print("UYARI: GEMINI_API_KEY bulunamadı.")
+            log.warning("GEMINI_API_KEY bulunamadı — AI komutları devre dışı.")
 
     async def cog_load(self):
         """Eklenti yüklendiğinde sohbet geçmişi tablosunu oluştur."""
-        async with aiosqlite.connect(DB_PATH) as db:
+        async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
+            await db.execute("PRAGMA journal_mode=WAL")
             await db.execute("CREATE TABLE IF NOT EXISTS chat_history (user_id INTEGER PRIMARY KEY, history_json TEXT NOT NULL)")
             await db.commit()
 
+    def _kirp(self, history_data):
+        """
+        Geçmişi son MAX_HISTORY_MESAJ mesajla sınırlar.
+
+        Gemini geçmişin 'user' rolüyle başlamasını bekler; kırpma sonrası ilk
+        mesaj 'model' olursa onu da atarız.
+        """
+        if len(history_data) <= MAX_HISTORY_MESAJ:
+            return history_data
+
+        kirpilmis = history_data[-MAX_HISTORY_MESAJ:]
+        while kirpilmis and kirpilmis[0].get("role") != "user":
+            kirpilmis.pop(0)
+        return kirpilmis
+
     async def load_history(self, user_id):
         """Kullanıcının sohbet geçmişini veritabanından yükler."""
-        async with aiosqlite.connect(DB_PATH) as db:
+        async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
             async with db.execute("SELECT history_json FROM chat_history WHERE user_id = ?", (user_id,)) as cursor:
                 row = await cursor.fetchone()
                 if row:
                     try:
-                        return json.loads(row[0])
-                    except:
+                        return self._kirp(json.loads(row[0]))
+                    except (ValueError, TypeError):
+                        log.warning("Bozuk sohbet geçmişi sıfırlandı (user_id=%s)", user_id)
                         return []
         return []
 
@@ -76,13 +102,25 @@ class AI(commands.Cog):
         """Kullanıcının sohbet geçmişini veritabanına kaydeder."""
         # Gemini history objesini JSON formatına çevir
         history_data = [
-            {"role": msg.role, "parts": [part.text for part in msg.parts]}
-            for msg in history 
+            {"role": msg.role, "parts": [part.text for part in msg.parts if getattr(part, "text", None)]}
+            for msg in history
             if msg.role in ("user", "model")
         ]
-        async with aiosqlite.connect(DB_PATH) as db:
+        history_data = self._kirp(history_data)
+
+        async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
             await db.execute("INSERT OR REPLACE INTO chat_history (user_id, history_json) VALUES (?, ?)", (user_id, json.dumps(history_data)))
             await db.commit()
+
+    def cooldown_kalan(self, user_id) -> float:
+        """
+        Mention yolu için manuel bekleme süresi kontrolü.
+
+        !sor komutunda commands.cooldown var ama bot etiketlendiğinde çalışan
+        on_message yolunda hiçbir sınır yoktu — spam ile Gemini kotası yakılabiliyordu.
+        """
+        son = self.ai_cooldowns.get(user_id, 0)
+        return max(0.0, AI_COOLDOWN_SANIYE - (time.time() - son))
 
     def split_message(self, text, limit=2000):
         """
@@ -114,23 +152,33 @@ class AI(commands.Cog):
         user_id: Sohbet geçmişi için kullanıcı ID'si
         prompt: Kullanıcının sorusu
         """
-        if not self.api_key: return await messageable.send("AI sistemi şu an devre dışı.")
-        
+        if not self.api_key:
+            return await messageable.send("AI sistemi şu an devre dışı.")
+
+        # İstek yola çıkar çıkmaz bekleme süresini işaretle, böylece cevap
+        # beklenirken atılan spam de sayılır.
+        self.ai_cooldowns[user_id] = time.time()
+
         async with messageable.typing():
             history_data = await self.load_history(user_id)
             chat = self.model.start_chat(history=history_data)
-            
+
             try:
                 response = await chat.send_message_async(prompt)
                 await self.save_history(user_id, chat.history)
-                
+
                 text = response.text
                 chunks = self.split_message(text)
                 for chunk in chunks:
                     await messageable.send(chunk)
 
-            except Exception as e:
-                await messageable.send(f"Hata oluştu: {e}")
+            except Exception:
+                # Tam istisnayı logla; kullanıcıya API anahtarı/URL içerebilecek
+                # ham hata metnini ASLA gönderme.
+                log.exception("Gemini yanıtı üretilemedi (user_id=%s)", user_id)
+                await messageable.send(
+                    "Şu an cevap veremiyorum, biraz sonra tekrar dener misin? 😅"
+                )
 
     @commands.command()
     @commands.cooldown(1, AI_COOLDOWN_SANIYE, commands.BucketType.user)
@@ -140,22 +188,42 @@ class AI(commands.Cog):
     @commands.Cog.listener()
     async def on_message(self, message):
         """Bot etiketlendiğinde çalışır."""
-        if message.author.bot: return 
-        
-        if self.bot.user in message.mentions and message.content.strip() != f"<@{self.bot.user.id}>":
-            prompt = message.content.replace(f"<@{self.bot.user.id}>", "").strip()
-            if prompt:
-                await self._generate_ai_response(message.channel, message.author.id, prompt)
+        if message.author.bot:
+            return
+
+        if self.bot.user not in message.mentions:
+            return
+
+        # Hem <@id> hem de eski <@!id> (nickname) etiket formatını temizle
+        prompt = message.content
+        for etiket in (f"<@{self.bot.user.id}>", f"<@!{self.bot.user.id}>"):
+            prompt = prompt.replace(etiket, "")
+        prompt = prompt.strip()
+
+        if not prompt:
+            return
+
+        # Mention yolunda da bekleme süresi uygula (!sor ile aynı)
+        kalan = self.cooldown_kalan(message.author.id)
+        if kalan > 0:
+            try:
+                await message.add_reaction("⏳")
+            except discord.HTTPException:
+                pass
+            return
+
+        await self._generate_ai_response(message.channel, message.author.id, prompt)
 
     @commands.command()
     async def sohbetisifirla(self, ctx):
         """Kullanıcının yapay zeka ile olan sohbet geçmişini siler."""
-        async with aiosqlite.connect(DB_PATH) as db:
+        async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
             await db.execute("DELETE FROM chat_history WHERE user_id = ?", (ctx.author.id,))
             await db.commit()
         await ctx.send("Sohbet geçmişin silindi. 🧠")
 
     @commands.command(name="ai-ban")
+    @commands.guild_only()
     @commands.has_permissions(administrator=True)
     async def ai_ban(self, ctx, member: discord.Member, *, reason="AI kuralları ihlali"):
         """AI kurallarını ihlal eden kullanıcıyı yasaklar (Admin)."""
@@ -199,8 +267,9 @@ class AI(commands.Cog):
                 
                 await ctx.send(embed=embed)
                 
-            except Exception as e:
-                await ctx.send(f"Öneri motoru çalışırken bir hata oluştu: {e}")
+            except Exception:
+                log.exception("Oyun önerisi üretilemedi (game=%r)", game_name)
+                await ctx.send("Öneri motoru şu an çalışmıyor, birazdan tekrar dene. 😥")
 
 
 

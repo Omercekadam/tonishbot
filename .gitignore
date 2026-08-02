@@ -4,3 +4,9 @@ __pycache__/
 *.pyc
 *.log
 venv/
+
+# Veritabanları — kullanıcı ID'leri ve bakiyeler içerir, asla commit edilmemeli
+*.db
+*.db-wal
+*.db-shm
+*.db.bak

@@ -1,9 +1,22 @@
-discord.py
-python-dotenv
-Pillow
-pytz
+# Çekirdek
+discord.py>=2.4,<3
+python-dotenv>=1.0
+
+# HTTP — steam.py doğrudan kullanıyor.
+# (discord.py zaten bağımlı olduğu için önceden çalışıyordu ama beyan edilmemişti.)
+aiohttp>=3.9
+
+# Veritabanı
+aiosqlite>=0.20
+
+# Görsel üretimi (liderlik tablosu, hoş geldin görseli, gamer kart)
+Pillow>=10.0
+
+# Zaman dilimi (!etkinliksayaci — Europe/Istanbul)
+pytz>=2024.1
+
+# Yapay zeka.
+# NOT: google-generativeai artık bakımı bırakılan eski SDK. Yerine google-genai
+# geçti. Göç ayrı bir iş olduğu için şimdilik mevcut sürüm korunuyor;
+# cogs/ai.py bu paketin API'sini kullanıyor.
 google-generativeai==0.7.1
-better-profanity
-aiosqlite
-requests
-wavelink

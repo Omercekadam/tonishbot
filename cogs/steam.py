@@ -1,32 +1,40 @@
 import discord
 from discord.ext import commands
 import aiosqlite
+import contextlib
+import logging
 import os
+import urllib.parse
 import aiohttp
 import json
 import random
 import io
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
-from dotenv import load_dotenv
+
+log = logging.getLogger(__name__)
 
 DB_PATH = "steam.db"
+
+# SQLite kilit bekleme süresi (saniye)
+DB_TIMEOUT = 30
 
 class Steam(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        load_dotenv() # Force reload .env
         self.api_key = os.getenv('STEAM_API_KEY')
-        if self.api_key:
-            print(f"[+] Steam API Key yüklendi (Uzunluk: {len(self.api_key)})")
-        else:
-            print("[-] Steam API Key BULUNAMADI! .env dosyasını kontrol edin.")
+        self.session = None
+        # appid -> [tür adı, ...]. Steam Store API'nin sıkı rate limit'i var
+        # (~200 istek / 5 dk) ve oyun türleri neredeyse hiç değişmez.
+        self.genre_cache = {}
+        if not self.api_key:
+            log.warning("STEAM_API_KEY bulunamadı! Steam komutları çalışmayacak.")
 
     async def cog_load(self):
-        if not self.api_key:
-            print("UYARI: STEAM_API_KEY bulunamadı! Steam komutları çalışmayabilir.")
-        
-        async with aiosqlite.connect(DB_PATH) as db:
+        self.session = aiohttp.ClientSession()
+
+        async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
+            await db.execute("PRAGMA journal_mode=WAL")
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS steam_users (
                     user_id INTEGER PRIMARY KEY,
@@ -35,28 +43,99 @@ class Steam(commands.Cog):
                 )
             """)
             await db.commit()
-            print("[+] Steam veritabanı hazır.")
+        log.info("Steam veritabanı hazır.")
+
+    async def cog_unload(self):
+        if self.session and not self.session.closed:
+            await self.session.close()
+
+    @contextlib.asynccontextmanager
+    async def _session(self):
+        """
+        Paylaşılan aiohttp oturumunu verir.
+
+        Eskiden her komut kendi ClientSession'ını açıp kapatıyordu; bu her seferinde
+        yeni TCP/TLS el sıkışması demekti. Tek oturum bağlantıları yeniden kullanır.
+        """
+        if self.session is None or self.session.closed:
+            self.session = aiohttp.ClientSession()
+        yield self.session
+
+    async def fetch_genres(self, appid) -> list:
+        """Bir oyunun türlerini getirir; sonuç bellekte cache'lenir."""
+        if appid in self.genre_cache:
+            return self.genre_cache[appid]
+
+        store_url = f"https://store.steampowered.com/api/appdetails?appids={appid}&l=turkish"
+        turler = []
+        try:
+            async with self._session() as session:
+                async with session.get(store_url) as response:
+                    if response.status == 200:
+                        store_data = await response.json()
+                        anahtar = str(appid)
+                        if store_data and anahtar in store_data and store_data[anahtar].get('success'):
+                            turler = [
+                                g['description']
+                                for g in store_data[anahtar]['data'].get('genres', [])
+                            ]
+                    elif response.status == 429:
+                        # Rate limit — cache'leme, bir sonraki sefere tekrar denensin
+                        log.warning("Steam Store API rate limit (appid=%s)", appid)
+                        return []
+        except (aiohttp.ClientError, ValueError):
+            log.warning("Oyun türleri alınamadı (appid=%s)", appid)
+            return []
+
+        self.genre_cache[appid] = turler
+        return turler
+
+    async def count_genres(self, games) -> dict:
+        """Oyun listesindeki türleri sayar."""
+        genre_counts = {}
+        for game in games:
+            for tur in await self.fetch_genres(game['appid']):
+                genre_counts[tur] = genre_counts.get(tur, 0) + 1
+        return genre_counts
 
     async def resolve_steam_id(self, input_id):
         """
         Kullanıcı girdisini (URL, ID, Vanity URL) Steam 64 ID'ye çevirir.
+
+        Desteklenen formatlar:
+          76561198000000000
+          https://steamcommunity.com/profiles/76561198000000000
+          https://steamcommunity.com/id/kullaniciadi
         """
-        # Eğer direkt 17 haneli bir sayı ise (Steam 64 ID)
-        if input_id.isdigit() and len(input_id) == 17:
-            return input_id
-        
-        # URL temizleme
-        clean_input = input_id.strip('/').split('/')[-1]
-        
-        # Vanity URL çözme (kullanıcı adı)
-        url = f"http://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?key={self.api_key}&vanityurl={clean_input}"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    if data.get('response', {}).get('success') == 1:
-                        return data['response']['steamid']
-        
+        if not input_id:
+            return None
+
+        # Sorgu parametrelerini ve sondaki eğik çizgileri at
+        temiz = input_id.strip().split('?')[0].split('#')[0].strip('/')
+
+        # Doğrudan 17 haneli Steam64 ID mi?
+        if temiz.isdigit() and len(temiz) == 17:
+            return temiz
+
+        # URL ise son parçayı al (/profiles/<id> veya /id/<vanity>)
+        son_parca = temiz.split('/')[-1]
+
+        # /profiles/<id> formatı — vanity değil, direkt Steam64 ID
+        if son_parca.isdigit() and len(son_parca) == 17:
+            return son_parca
+
+        # Geriye kalan: vanity URL (kullanıcı adı) — API'ye sor
+        url = f"https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?key={self.api_key}&vanityurl={son_parca}"
+        try:
+            async with self._session() as session:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if data.get('response', {}).get('success') == 1:
+                            return data['response']['steamid']
+        except aiohttp.ClientError:
+            log.exception("Steam vanity URL çözümlenemedi (input=%r)", son_parca)
+
         return None
 
     @commands.command()
@@ -75,8 +154,8 @@ class Steam(commands.Cog):
                 return await ctx.send("Steam ID bulunamadı! Lütfen geçerli bir Steam ID veya profil linki gir.\nÖrnek: `!steam_bagla https://steamcommunity.com/id/kullaniciadi` veya `!steam_bagla 76561198000000000`")
 
             # Profilin varlığını ve gizliliğini kontrol et
-            summary_url = f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={self.api_key}&steamids={steam_id}"
-            async with aiohttp.ClientSession() as session:
+            summary_url = f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={self.api_key}&steamids={steam_id}"
+            async with self._session() as session:
                 async with session.get(summary_url) as response:
                     data = await response.json()
                     players = data.get('response', {}).get('players', [])
@@ -87,7 +166,7 @@ class Steam(commands.Cog):
                     persona_name = player.get('personaname', 'Bilinmeyen')
 
             # Veritabanına kaydet
-            async with aiosqlite.connect(DB_PATH) as db:
+            async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
                 await db.execute("""
                     INSERT OR REPLACE INTO steam_users (user_id, steam_id, last_updated)
                     VALUES (?, ?, ?)
@@ -97,6 +176,7 @@ class Steam(commands.Cog):
             await ctx.send(f"✅ Başarılı! **{persona_name}** Steam hesabı başarıyla bağlandı.")
 
     @commands.command()
+    @commands.guild_only()
     async def oyunsuresi(self, ctx):
         """
         Sunucudaki kullanıcıların son 2 haftalık oyun sürelerini sıralar.
@@ -106,7 +186,7 @@ class Steam(commands.Cog):
 
         async with ctx.typing():
             # Veritabanından kayıtlı kullanıcıları çek
-            async with aiosqlite.connect(DB_PATH) as db:
+            async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
                 async with db.execute("SELECT user_id, steam_id FROM steam_users") as cursor:
                     users = await cursor.fetchall()
 
@@ -115,14 +195,14 @@ class Steam(commands.Cog):
 
             leaderboard = []
 
-            async with aiohttp.ClientSession() as session:
+            async with self._session() as session:
                 for user_id, steam_id in users:
                     # Discord kullanıcısının sunucuda olup olmadığını kontrol et
                     member = ctx.guild.get_member(user_id)
                     if not member:
                         continue
 
-                    url = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={steam_id}&format=json"
+                    url = f"https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={steam_id}&format=json"
                     try:
                         async with session.get(url) as response:
                             if response.status == 200:
@@ -135,7 +215,7 @@ class Steam(commands.Cog):
                                 if total_playtime_2weeks > 0:
                                     leaderboard.append((member.display_name, total_playtime_2weeks))
                     except Exception as e:
-                        print(f"Hata ({steam_id}): {e}")
+                        log.warning("Oyun süresi alınamadı (steam_id=%s): %s", steam_id, e)
                         continue
 
             # Sıralama (En çok oynayan en üstte)
@@ -162,6 +242,7 @@ class Steam(commands.Cog):
             await ctx.send(embed=embed)
 
     @commands.command()
+    @commands.guild_only()
     async def ortak(self, ctx, member: discord.Member):
         """
         Etiketlenen kullanıcı ile ortak oyunları bulur ve birini önerir.
@@ -174,7 +255,7 @@ class Steam(commands.Cog):
             return await ctx.send("Kendinle ortak oyun bulamazsın. 😅")
 
         async with ctx.typing():
-            async with aiosqlite.connect(DB_PATH) as db:
+            async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
                 async with db.execute("SELECT user_id, steam_id FROM steam_users WHERE user_id IN (?, ?)", (ctx.author.id, member.id)) as cursor:
                     rows = await cursor.fetchall()
 
@@ -185,11 +266,11 @@ class Steam(commands.Cog):
             id1 = steam_ids[ctx.author.id]
             id2 = steam_ids[member.id]
 
-            async with aiohttp.ClientSession() as session:
+            async with self._session() as session:
                 # 1. Kullanıcının oyunları
-                url1 = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={id1}&include_appinfo=true&format=json"
+                url1 = f"https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={id1}&include_appinfo=true&format=json"
                 # 2. Kullanıcının oyunları
-                url2 = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={id2}&include_appinfo=true&format=json"
+                url2 = f"https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={id2}&include_appinfo=true&format=json"
 
                 try:
                     games1 = []
@@ -231,11 +312,12 @@ class Steam(commands.Cog):
                     
                     await ctx.send(embed=embed)
 
-                except Exception as e:
-                    print(f"Hata (!ortak): {e}")
+                except (aiohttp.ClientError, ValueError, KeyError):
+                    log.exception("!ortak komutu başarısız")
                     await ctx.send("Oyunlar listelenirken bir hata oluştu.")
 
     @commands.command()
+    @commands.guild_only()
     async def kimoyunda(self, ctx):
         """
         Steam hesabını bağlayanlardan şu an kimin ne oynadığını gösterir.
@@ -244,7 +326,7 @@ class Steam(commands.Cog):
             return await ctx.send("Steam API anahtarı eksik.")
 
         async with ctx.typing():
-            async with aiosqlite.connect(DB_PATH) as db:
+            async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
                 async with db.execute("SELECT user_id, steam_id FROM steam_users") as cursor:
                     users = await cursor.fetchall()
 
@@ -260,9 +342,9 @@ class Steam(commands.Cog):
             
             playing_users = []
             
-            async with aiohttp.ClientSession() as session:
+            async with self._session() as session:
                 ids_str = ",".join(steam_ids_list)
-                url = f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={self.api_key}&steamids={ids_str}"
+                url = f"https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={self.api_key}&steamids={ids_str}"
                 
                 try:
                     async with session.get(url) as response:
@@ -280,8 +362,8 @@ class Steam(commands.Cog):
                                     
                                     if member:
                                         playing_users.append((member.display_name, game_name))
-                except Exception as e:
-                    print(f"Hata (!kimoyunda): {e}")
+                except (aiohttp.ClientError, ValueError, KeyError):
+                    log.exception("!kimoyunda komutu başarısız")
                     return await ctx.send("Veriler alınırken hata oluştu.")
 
             if not playing_users:
@@ -294,13 +376,11 @@ class Steam(commands.Cog):
             
             for name, game in playing_users:
                 embed.add_field(name=name, value=f"🎮 {game}", inline=False)
-                
-            for name, game in playing_users:
-                embed.add_field(name=name, value=f"🎮 {game}", inline=False)
-                
+
             await ctx.send(embed=embed)
 
     @commands.command()
+    @commands.guild_only()
     async def analiz(self, ctx, member: discord.Member = None):
         """
         Kullanıcının oyun zevkini (Gamer DNA) analiz eder.
@@ -313,7 +393,7 @@ class Steam(commands.Cog):
 
         async with ctx.typing():
             # 1. Steam ID'yi bul
-            async with aiosqlite.connect(DB_PATH) as db:
+            async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
                 async with db.execute("SELECT steam_id FROM steam_users WHERE user_id = ?", (member.id,)) as cursor:
                     row = await cursor.fetchone()
             
@@ -323,16 +403,16 @@ class Steam(commands.Cog):
             steam_id = row[0]
 
             # 2. En çok oynanan oyunları çek
-            async with aiohttp.ClientSession() as session:
-                url = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={steam_id}&include_appinfo=true&format=json"
+            async with self._session() as session:
+                url = f"https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={steam_id}&include_appinfo=true&format=json"
                 try:
                     async with session.get(url) as response:
                         if response.status != 200:
                             return await ctx.send("Steam verileri alınamadı.")
                         data = await response.json()
                         games = data.get('response', {}).get('games', [])
-                except Exception as e:
-                    print(f"Hata (!analiz games): {e}")
+                except (aiohttp.ClientError, ValueError):
+                    log.exception("!analiz oyun listesi alınamadı")
                     return await ctx.send("Oyun listesi alınırken hata oluştu.")
 
             if not games:
@@ -347,26 +427,7 @@ class Steam(commands.Cog):
             # Not: Bu işlem biraz sürebilir, kullanıcıya bilgi verelim.
             status_msg = await ctx.send(f"🧬 {member.display_name} için Gamer DNA analizi yapılıyor... (Bu işlem biraz sürebilir)")
 
-            async with aiohttp.ClientSession() as session:
-                for game in top_games:
-                    appid = game['appid']
-                    store_url = f"https://store.steampowered.com/api/appdetails?appids={appid}&l=turkish"
-                    
-                    try:
-                        async with session.get(store_url) as response:
-                            if response.status == 200:
-                                store_data = await response.json()
-                                if store_data and str(appid) in store_data and store_data[str(appid)]['success']:
-                                    genres = store_data[str(appid)]['data'].get('genres', [])
-                                    for g in genres:
-                                        g_name = g['description']
-                                        genre_counts[g_name] = genre_counts.get(g_name, 0) + 1
-                    except Exception as e:
-                        print(f"Hata (!analiz genre {appid}): {e}")
-                        continue
-                    
-                    # Rate limit yememek için kısa bekleme (opsiyonel ama güvenli)
-                    # await asyncio.sleep(0.1) 
+            genre_counts = await self.count_genres(top_games)
 
             if not genre_counts:
                 await status_msg.delete()
@@ -404,7 +465,6 @@ class Steam(commands.Cog):
             }
             
             # JSON'u URL-safe string'e çevir
-            import urllib.parse
             encoded_config = urllib.parse.quote(json.dumps(chart_config))
             chart_url = f"https://quickchart.io/chart?c={encoded_config}&bkg=transparent"
 
@@ -435,10 +495,8 @@ class Steam(commands.Cog):
             await status_msg.delete()
             await ctx.send(embed=embed)
 
-            await status_msg.delete()
-            await ctx.send(embed=embed)
-
     @commands.command(aliases=["kimlik"])
+    @commands.guild_only()
     async def kart(self, ctx, member: discord.Member = None):
         """
         Kullanıcının Steam Gamer Kartını oluşturur.
@@ -450,7 +508,7 @@ class Steam(commands.Cog):
 
         async with ctx.typing():
             # 1. Veritabanından Steam ID çek
-            async with aiosqlite.connect(DB_PATH) as db:
+            async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
                 async with db.execute("SELECT steam_id FROM steam_users WHERE user_id = ?", (member.id,)) as cursor:
                     row = await cursor.fetchone()
             
@@ -460,9 +518,9 @@ class Steam(commands.Cog):
             steam_id = row[0]
 
             # 2. Steam'den Oyunları Çek
-            async with aiohttp.ClientSession() as session:
+            async with self._session() as session:
                 # Oyunlar
-                url_games = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={steam_id}&include_appinfo=true&format=json"
+                url_games = f"https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={steam_id}&include_appinfo=true&format=json"
                 # Profil (Avatar için) - Discord avatarı da kullanılabilir ama Steam avatarı daha uyumlu olabilir. 
                 # Kullanıcı isteği: "kullanıcının profil resmini" dedi, Discord profil resmi daha mantıklı çünkü bot Discord botu.
                 
@@ -471,8 +529,8 @@ class Steam(commands.Cog):
                         if resp.status != 200: return await ctx.send("Steam verileri alınamadı.")
                         data = await resp.json()
                         games = data.get('response', {}).get('games', [])
-                except Exception as e:
-                    print(f"Hata (!kart): {e}")
+                except (aiohttp.ClientError, ValueError):
+                    log.exception("!kart oyun listesi alınamadı")
                     return await ctx.send("Veri alınırken hata oluştu.")
 
             if not games:
@@ -481,120 +539,104 @@ class Steam(commands.Cog):
             # En çok oynanan 3 oyunu al
             top_3 = sorted(games, key=lambda x: x.get('playtime_forever', 0), reverse=True)[:3]
 
-            # 3. Görsel Oluşturma (Pillow)
-            # Arka plan (800x400)
-            width, height = 800, 400
-            background_color = (30, 30, 35) # Koyu gri
-            card = Image.new("RGBA", (width, height), background_color)
-            draw = ImageDraw.Draw(card)
-
-            # Fontlar (Varsayılan fontu yüklemeye çalış, yoksa default)
+            # 3. Ağ işleri: avatar, favori tür, kapak görselleri
+            #    (Hepsi PIL'den ÖNCE toplanır ki çizim tek seferde executor'da yapılabilsin.)
             try:
-                font_large = ImageFont.truetype("Roboto-Regular.ttf", 20)
-                font_medium = ImageFont.truetype("Roboto-Regular.ttf", 15)
-                font_small = ImageFont.truetype("Roboto-Regular.ttf", 12)
-            except:
-                font_large = ImageFont.load_default()
-                font_medium = ImageFont.load_default()
-                font_small = ImageFont.load_default()
+                avatar_bytes = await member.display_avatar.read()
+            except discord.HTTPException:
+                log.warning("Avatar okunamadı (user_id=%s)", member.id)
+                avatar_bytes = None
 
-            # --- Sol Taraf: Kullanıcı Bilgisi ---
-            
-            # Avatar
-            avatar_size = 150
-            if member.avatar:
-                avatar_bytes = await member.avatar.read()
-                avatar_img = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
-                avatar_img = avatar_img.resize((avatar_size, avatar_size))
-                
-                # Yuvarlak maske
-                mask = Image.new("L", (avatar_size, avatar_size), 0)
-                draw_mask = ImageDraw.Draw(mask)
-                draw_mask.ellipse((0, 0, avatar_size, avatar_size), fill=255)
-                
-                card.paste(avatar_img, (50, 50), mask)
-            
-            # Kullanıcı Adı
-            draw.text((50, 220), member.display_name, font=font_large, fill="white")
-            
-            # Toplam Oyun Saati
-            total_minutes = sum(g.get('playtime_forever', 0) for g in games)
-            total_hours = total_minutes // 60
-            draw.text((50, 270), f"Toplam Süre: {total_hours} Saat", font=font_medium, fill="#AAAAAA")
-            
-            # Oyun Sayısı
-            draw.text((50, 310), f"Kütüphane: {len(games)} Oyun", font=font_medium, fill="#AAAAAA")
-
-            # --- Favori Tür Analizi (Top 10 Oyun) ---
-            # Kullanıcı beklerken bilgi verelim (opsiyonel, ama iyi olur)
-            # await ctx.send("Favori tür analiz ediliyor...", delete_after=3)
-            
             top_10_games = sorted(games, key=lambda x: x.get('playtime_forever', 0), reverse=True)[:10]
-            genre_counts = {}
-            
-            async with aiohttp.ClientSession() as session:
-                for game in top_10_games:
-                    appid = game['appid']
-                    store_url = f"https://store.steampowered.com/api/appdetails?appids={appid}&l=turkish"
-                    try:
-                        async with session.get(store_url) as response:
-                            if response.status == 200:
-                                store_data = await response.json()
-                                if store_data and str(appid) in store_data and store_data[str(appid)]['success']:
-                                    genres = store_data[str(appid)]['data'].get('genres', [])
-                                    for g in genres:
-                                        g_name = g['description']
-                                        genre_counts[g_name] = genre_counts.get(g_name, 0) + 1
-                    except:
-                        continue
-
+            genre_counts = await self.count_genres(top_10_games)
             favorite_genre = max(genre_counts, key=genre_counts.get) if genre_counts else "Bilinmiyor"
 
-            # Favori Tür Yazısı
-            draw.text((50, 350), f"Favori Tür: {favorite_genre}", font=font_medium, fill="#AAAAAA")
-
-            # --- Sağ Taraf: Top 3 Oyun ---
-            
-            game_x = 350
-            game_y = 20
-            
-            async with aiohttp.ClientSession() as session:
+            kapaklar = []
+            async with self._session() as session:
                 for game in top_3:
-                    appid = game['appid']
-                    game_name = game['name']
-                    playtime = game.get('playtime_forever', 0) // 60
-                    
-                    # Kapak Resmi URL
-                    header_url = f"https://steamcdn-a.akamaihd.net/steam/apps/{appid}/header.jpg"
-                    
+                    veri = None
+                    header_url = f"https://steamcdn-a.akamaihd.net/steam/apps/{game['appid']}/header.jpg"
                     try:
                         async with session.get(header_url) as resp:
                             if resp.status == 200:
-                                img_data = await resp.read()
-                                game_img = Image.open(io.BytesIO(img_data)).convert("RGBA")
-                                # Boyutlandır (Örn: 400x187 -> 200x90 gibi küçültelim)
-                                game_img = game_img.resize((240, 112)) 
-                                card.paste(game_img, (game_x, game_y))
-                    except:
-                        # Resim yüklenemezse kutu çiz
-                        draw.rectangle([game_x, game_y, game_x+240, game_y+112], outline="white", width=2)
-                        draw.text((game_x+10, game_y+40), "Resim Yok", fill="white")
+                                veri = await resp.read()
+                    except aiohttp.ClientError:
+                        log.warning("Kapak görseli alınamadı (appid=%s)", game['appid'])
+                    kapaklar.append({
+                        "name": game['name'],
+                        "playtime": game.get('playtime_forever', 0) // 60,
+                        "image": veri,
+                    })
 
-                    # Oyun Adı ve Süresi
-                    # draw.text((game_x + 250, game_y + 10), game_name[:20], font=font_medium, fill="white")
-                    draw.text((game_x + 250, game_y + 40), f"{playtime} Saat", font=font_small, fill="#AAAAAA")
+            # 4. Görseli oluştur — Pillow bloklayıcıdır, event loop'u kilitlememek
+            #    için executor'da çalıştırılır (economy.py'deki liderlik tablosuyla aynı desen).
+            toplam_saat = sum(g.get('playtime_forever', 0) for g in games) // 60
+            buffer = await self.bot.loop.run_in_executor(
+                None,
+                self.render_gamer_card,
+                member.display_name, avatar_bytes, toplam_saat, len(games), favorite_genre, kapaklar,
+            )
 
-                    game_y += 120 # Bir sonraki oyun için aşağı kaydır
+            await ctx.send(file=discord.File(buffer, filename="gamer_card.png"))
 
-            # ByteIO'ya kaydet
-            buffer = io.BytesIO()
-            card.save(buffer, format="PNG")
-            buffer.seek(0)
-            
-            file = discord.File(buffer, filename="gamer_card.png")
-            await ctx.send(file=file)
+    def render_gamer_card(self, display_name, avatar_bytes, toplam_saat, oyun_sayisi, favori_tur, kapaklar):
+        """Gamer kartını çizer. BLOKLAYICI — executor'da çağrılmalı."""
+        width, height = 800, 400
+        card = Image.new("RGBA", (width, height), (30, 30, 35))
+        draw = ImageDraw.Draw(card)
+
+        try:
+            font_large = ImageFont.truetype("Roboto-Regular.ttf", 20)
+            font_medium = ImageFont.truetype("Roboto-Regular.ttf", 15)
+            font_small = ImageFont.truetype("Roboto-Regular.ttf", 12)
+        except OSError:
+            font_large = font_medium = font_small = ImageFont.load_default()
+
+        # --- Sol Taraf: Kullanıcı Bilgisi ---
+        avatar_size = 150
+        if avatar_bytes:
+            try:
+                avatar_img = Image.open(io.BytesIO(avatar_bytes)).convert("RGBA")
+                avatar_img = avatar_img.resize((avatar_size, avatar_size))
+                mask = Image.new("L", (avatar_size, avatar_size), 0)
+                ImageDraw.Draw(mask).ellipse((0, 0, avatar_size, avatar_size), fill=255)
+                card.paste(avatar_img, (50, 50), mask)
+            except Exception:
+                log.exception("Avatar işlenemedi")
+
+        draw.text((50, 220), display_name, font=font_large, fill="white")
+        draw.text((50, 270), f"Toplam Süre: {toplam_saat} Saat", font=font_medium, fill="#AAAAAA")
+        draw.text((50, 310), f"Kütüphane: {oyun_sayisi} Oyun", font=font_medium, fill="#AAAAAA")
+        draw.text((50, 350), f"Favori Tür: {favori_tur}", font=font_medium, fill="#AAAAAA")
+
+        # --- Sağ Taraf: Top 3 Oyun ---
+        game_x, game_y = 350, 20
+        for kapak in kapaklar:
+            cizildi = False
+            if kapak["image"]:
+                try:
+                    game_img = Image.open(io.BytesIO(kapak["image"])).convert("RGBA")
+                    card.paste(game_img.resize((240, 112)), (game_x, game_y))
+                    cizildi = True
+                except Exception:
+                    log.warning("Kapak görseli işlenemedi: %s", kapak["name"])
+
+            if not cizildi:
+                draw.rectangle([game_x, game_y, game_x + 240, game_y + 112], outline="white", width=2)
+                draw.text((game_x + 10, game_y + 40), "Resim Yok", fill="white")
+
+            draw.text((game_x + 250, game_y + 10), kapak["name"][:22], font=font_medium, fill="white")
+            draw.text((game_x + 250, game_y + 40), f"{kapak['playtime']} Saat", font=font_small, fill="#AAAAAA")
+            game_y += 120
+
+        buffer = io.BytesIO()
+        card.save(buffer, format="PNG")
+        buffer.seek(0)
+        return buffer
+
 
     @commands.command(name="sunucu-istatistik", aliases=["server-stats"])
+    @commands.guild_only()
     async def sunucu_istatistik(self, ctx):
         """
         Sunucudaki tüm bağlı Steam hesaplarının kolektif istatistiklerini gösterir.
@@ -607,7 +649,7 @@ class Steam(commands.Cog):
 
         async with ctx.typing():
             # 1. Tüm kullanıcıları çek
-            async with aiosqlite.connect(DB_PATH) as db:
+            async with aiosqlite.connect(DB_PATH, timeout=DB_TIMEOUT) as db:
                 async with db.execute("SELECT steam_id FROM steam_users") as cursor:
                     users = await cursor.fetchall()
 
@@ -619,9 +661,9 @@ class Steam(commands.Cog):
             game_ownership = {} # {appid: {"name": name, "count": count}}
             
             # 2. Her kullanıcının oyunlarını çek ve topla
-            async with aiohttp.ClientSession() as session:
+            async with self._session() as session:
                 for (steam_id,) in users:
-                    url = f"http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={steam_id}&include_appinfo=true&format=json"
+                    url = f"https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={self.api_key}&steamid={steam_id}&include_appinfo=true&format=json"
                     try:
                         async with session.get(url) as response:
                             if response.status == 200:
@@ -639,7 +681,7 @@ class Steam(commands.Cog):
                                         game_ownership[appid] = {"name": name, "count": 0}
                                     game_ownership[appid]["count"] += 1
                     except Exception as e:
-                        print(f"Hata (sunucu-istatistik user {steam_id}): {e}")
+                        log.warning("Sunucu istatistiği alınamadı (steam_id=%s): %s", steam_id, e)
                         continue
 
             if not game_ownership:
@@ -660,20 +702,9 @@ class Steam(commands.Cog):
             sorted_games_by_popularity = sorted(game_ownership.items(), key=lambda x: x[1]["count"], reverse=True)[:20]
             genre_counts = {}
             
-            async with aiohttp.ClientSession() as session:
-                for appid, info in sorted_games_by_popularity:
-                    store_url = f"https://store.steampowered.com/api/appdetails?appids={appid}&l=turkish"
-                    try:
-                        async with session.get(store_url) as response:
-                            if response.status == 200:
-                                store_data = await response.json()
-                                if store_data and str(appid) in store_data and store_data[str(appid)]['success']:
-                                    genres = store_data[str(appid)]['data'].get('genres', [])
-                                    for g in genres:
-                                        g_name = g['description']
-                                        genre_counts[g_name] = genre_counts.get(g_name, 0) + 1
-                    except:
-                        continue
+            genre_counts = await self.count_genres(
+                [{'appid': appid} for appid, _ in sorted_games_by_popularity]
+            )
             
             server_favorite_genre = max(genre_counts, key=genre_counts.get) if genre_counts else "Bilinmiyor"
 

@@ -1,9 +1,12 @@
 import discord
 from discord.ext import commands
+import logging
 import os
 import pytz
 import random
 from datetime import datetime
+
+log = logging.getLogger(__name__)
 
 class General(commands.Cog):
     def __init__(self, bot):
@@ -13,6 +16,7 @@ class General(commands.Cog):
         self.event_counter_channel_id = int(os.getenv('EVENT_COUNTER_CHANNEL_ID', 0))
 
     @commands.command()
+    @commands.guild_only()
     async def link(self, ctx):
         """
         Sosyal medya linklerini paylaşan komut.
@@ -71,6 +75,7 @@ class General(commands.Cog):
         await ctx.send(message_content)
 
     @commands.command(name="yardim", aliases=["help", "komutlar", "komut","kodlar","yardım"])
+    @commands.guild_only()
     async def yardim(self, ctx):
         """
         Botun komutlarını listeleyen yardım menüsü.
@@ -122,13 +127,24 @@ class General(commands.Cog):
             value="Tonish bahsettiğiniz oyunu baz alarak size oynayabileceğiniz 3 adet farklı oyun önerir.",
             inline=False
         )
+        embed.add_field(
+            name="💬 !sor [soru]",
+            value="Tonish'e doğrudan soru sorarsınız. `!sohbetisifirla` ile aranızdaki sohbet geçmişini silebilirsiniz.",
+            inline=False
+        )
+        embed.add_field(
+            name="ℹ️ !bilgi",
+            value="Nishdot'un ne olduğunu ve ne yaptığını anlatan komut.",
+            inline=False
+        )
 
         embed.set_footer(text=f"{ctx.guild.name} Yardım Menüsü")
         
         await ctx.send(embed=embed)
 
     @commands.command()
-    async def oyun(self,ctx):
+    @commands.guild_only()
+    async def oyun(self, ctx):
         """
         Tonishbot üzerinden oynanan oyunların bilgisini veren komut"""
 
@@ -149,8 +165,9 @@ class General(commands.Cog):
             inline=False
         )
         embed.add_field(
-            name="!hacker",
-            value="🔒Hacker oyunu oynayarak kilitli kasanın içindeki tonishcoini alabileceğiniz oyun.",
+            name="!hacker (veya !sistemkirici)",
+            value="🔒Hacker oyunu oynayarak kilitli kasanın içindeki tonishcoini alabileceğiniz oyun.\n"
+                  "`!tahmin 12345` ile tahmin yapar, `!vazgec` ile görevden çıkarsınız.",
             inline=False
         )
         embed.add_field(
@@ -172,6 +189,7 @@ class General(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="ekonomi", aliases=["eco","economi","liderlikbilgi","ekonomibilgi"])
+    @commands.guild_only()
     async def ekonomi(self, ctx):
         """Ekonomi sistemiyle ilgili temel komutları listeler."""
         
@@ -208,6 +226,7 @@ class General(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
+    @commands.guild_only()
     async def steam(self, ctx):
         """Tonish'in Steam entegrasyonu komutlarını listeler."""
 
@@ -254,11 +273,18 @@ class General(commands.Cog):
             inline=False
             )
 
+        embed.add_field(
+            name="!sunucu-istatistik",
+            value="📊 Steam hesabını bağlamış tüm üyelerin toplam oyun süresini, en popüler oyunu ve sunucunun favori türünü gösterir.",
+            inline=False
+            )
+
         embed.set_footer(text=f"{ctx.guild.name} Steam Sistemi")
         
         await ctx.send(embed=embed)
 
     @commands.command()
+    @commands.guild_only()
     async def yk(self, ctx):
         """
         Nishdot yönetim kurulu listesini gösterir.
@@ -365,6 +391,7 @@ class General(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
+    @commands.guild_only()
     @commands.has_permissions(administrator=True) 
     async def duyuru(self, ctx, *, message: str):
         """
@@ -382,7 +409,7 @@ class General(commands.Cog):
 
         target_channel = self.bot.get_channel(self.announcement_channel_id)
         if not target_channel:
-            await ctx.send("Duyuru kanalı bulunamadı.", ephemeral=True)
+            await ctx.send("Duyuru kanalı bulunamadı.")
             return
         
         ping_content = None         
@@ -425,13 +452,24 @@ class General(commands.Cog):
         embed.timestamp = discord.utils.utcnow()
         
         try:
-            await target_channel.send(content=ping_content, embed=embed)
-            await ctx.send("✅ Duyurun başarıyla gönderildi.", ephemeral=True, delete_after=10)
+            # Bot varsayılan olarak @everyone/rol etiketlerini engelliyor;
+            # duyuru bilinçli olarak ping attığı için burada açıkça izin veriyoruz.
+            await target_channel.send(
+                content=ping_content,
+                embed=embed,
+                allowed_mentions=discord.AllowedMentions(everyone=True, roles=True, users=True),
+            )
+            await ctx.send("✅ Duyurun başarıyla gönderildi.", delete_after=10)
             await ctx.message.delete()
-        except Exception as e:
-            await ctx.send(f"Hata: {e}")
+        except discord.Forbidden:
+            log.warning("Duyuru gönderilemedi, yetki yetersiz (channel_id=%s)", self.announcement_channel_id)
+            await ctx.send("Duyuru kanalına yazma yetkim yok. Kanal izinlerini kontrol et.")
+        except discord.HTTPException:
+            log.exception("Duyuru gönderilemedi (channel_id=%s)", self.announcement_channel_id)
+            await ctx.send("Duyuru gönderilirken bir sorun oldu, tekrar dene.")
 
     @commands.command()
+    @commands.guild_only()
     @commands.has_permissions(administrator=True)
     async def etkinliksayaci(self, ctx, tarih_str: str, saat_str: str, etkinlik_adi: str, *, aciklama: str):
         """
@@ -445,7 +483,7 @@ class General(commands.Cog):
 
         target_channel = self.bot.get_channel(self.event_counter_channel_id)
         if not target_channel:
-            await ctx.send("Etkinlik kanalı bulunamadı.", ephemeral=True)
+            await ctx.send("Etkinlik kanalı bulunamadı.")
             return
 
         try:
@@ -474,9 +512,20 @@ class General(commands.Cog):
         embed.set_footer(text=f"{ctx.guild.name} Etkinlik Takvimi")
         embed.timestamp = discord.utils.utcnow()
 
-        await target_channel.send(embed=embed)
-        await ctx.send("✅ Etkinlik sayacı gönderildi.", ephemeral=True, delete_after=10)
-        await ctx.message.delete()
+        try:
+            await target_channel.send(embed=embed)
+        except discord.Forbidden:
+            log.warning("Etkinlik sayacı gönderilemedi, yetki yetersiz (channel_id=%s)", self.event_counter_channel_id)
+            return await ctx.send("Etkinlik kanalına yazma yetkim yok. Kanal izinlerini kontrol et.")
+        except discord.HTTPException:
+            log.exception("Etkinlik sayacı gönderilemedi (channel_id=%s)", self.event_counter_channel_id)
+            return await ctx.send("Etkinlik sayacı gönderilirken bir sorun oldu, tekrar dene.")
+
+        await ctx.send("✅ Etkinlik sayacı gönderildi.", delete_after=10)
+        try:
+            await ctx.message.delete()
+        except discord.HTTPException:
+            pass
 
     @commands.command(name="oyunfikri", aliases=["gameidea"])
     async def oyunfikri(self, ctx):
@@ -509,7 +558,7 @@ class GameIdeaView(discord.ui.View):
             "Su altı şehri", "Rüyalar alemi", "Vahşi Batı", "Kıyamet sonrası", 
             "Oyuncak dünyası", "Antik Mısır", "Hacker dünyası", "Korsan gemisi",
             "Büyülü orman", "Distopik gelecek", "Noir dedektiflik", "Kırmızı evren","Renkler Yok",
-            "1900's","1800's","Antik Mısır","Antik Yunanistan","Distopya","Ütopya","İstanbul","Ankara","Osmanlı",
+            "1900's","1800's","Antik Yunanistan","Distopya","Ütopya","İstanbul","Ankara","Osmanlı",
             "Tamamen serbest","Kapadokya Peri Bacaları", "Kapalıçarşı'nın Dehlizleri", "Karadeniz Yaylaları", 
             "90'lar Türkiye'si", "Ege Kasabası","Mars Kolonisi", "Yapay Zeka'nın Zihni", "Dev Bir Canavarın İçi", 
             "Bulutların Üzerindeki Krallık", "Yeraltı Metro Tünelleri", "Solarpunk (Doğa ile teknoloji iç içe)",
@@ -522,7 +571,8 @@ class GameIdeaView(discord.ui.View):
             "Düşmanları öldüremezsin, onlarla dost olmalısın", "Her şey yok edilebilir", 
             "Siyah-beyaz grafikler", "Metin yok (sadece semboller)", "Sesler görselleştirilmeli", 
             "Can barın yok (tek vuruşta ölürsün)", "Envanterin sadece 1 eşya alabilir",
-            "Karanlıkta göremiyorsun", "Yer çekimi sürekli değişiyor","Tamamen Serbest""Sağlık barı yok (Canın kıyafetin/zırhın kadardır)", 
+            "Karanlıkta göremiyorsun", "Yer çekimi sürekli değişiyor", "Tamamen Serbest",
+            "Sağlık barı yok (Canın kıyafetin/zırhın kadardır)",
             "Düşmanlar senin hareketlerini taklit eder", 
             "Sürekli kan kaybediyorsun (Zaman sınırı)", 
             "Yerçekimi yok (Sıfır yerçekimi)", 
