@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎮 TonishBot
+# TonishBot
 
 **nishdot Discord sunucusunun her işi yapan maskotu.**
 
