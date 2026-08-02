@@ -16,7 +16,9 @@ Pillow>=10.0
 pytz>=2024.1
 
 # Yapay zeka.
-# NOT: google-generativeai artık bakımı bırakılan eski SDK. Yerine google-genai
-# geçti. Göç ayrı bir iş olduğu için şimdilik mevcut sürüm korunuyor;
-# cogs/ai.py bu paketin API'sini kullanıyor.
-google-generativeai==0.7.1
+# NOT: google-generativeai artık bakımı bırakılan eski SDK (resmi destek
+# 30 Kasım 2025'te sona erdi), yerine google-genai geçti. Göç ayrı bir iş
+# olduğu için şimdilik son legacy sürümde kalıyoruz — 0.7.1, Gemini 3.x'in
+# thinking_config parametresinden önceki bir sürümdü, bu yüzden 0.8.6'ya
+# yükseltildi (bkz. cogs/ai.py'deki thinking_budget ayarı).
+google-generativeai==0.8.6
