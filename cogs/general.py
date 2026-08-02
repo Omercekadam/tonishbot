@@ -312,14 +312,14 @@ class General(commands.Cog):
         )
 
         embed.add_field(
-            name="📅 Yazılım ve Teknoloji Sorumlusu",
-            value="Ömer Soysal",
+            name="🌍 Dış İlişkiler Koordinatörü",
+            value="Boran Bulut",
             inline=True
         )
 
         embed.add_field(
-            name="🌍 Dış İlişkiler Koordinatörü",
-            value="Boran Bulut",
+            name="▶ Yazılım ve Teknoloji Sorumlusu",
+            value="Ömer Soysal",
             inline=True
         )
 
